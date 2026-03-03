@@ -1,3 +1,4 @@
+
 #%%
 
 import pandas as pd
@@ -28,7 +29,6 @@ def explore_data(df):
     print(f"Number of rows: {df.shape[0]}")
     print(f"Number of columns: {df.shape[1]}")
 
-    display(GIST_data)
 
     print("\nColumn Types:")
     print(df.dtypes.value_counts())
