@@ -1,4 +1,5 @@
 #%%
+#%%
 import pandas as pd
 import os
 import numpy as np
@@ -7,7 +8,8 @@ import nibabel as nib
 import seaborn as sns
 from sklearn.preprocessing import LabelEncoder
 
-#%%
+
+
 
 def load_data(file_name):
     this_directory = os.path.dirname(os.path.abspath(__file__))
@@ -83,3 +85,17 @@ GIST_data = load_data('GIST_radiomicFeatures.csv')
 explore_data(GIST_data)
 
 plot_feature_pairs(GIST_data)
+
+
+#%%
+#kijken wat voor radiomic features er in de dataset zitten
+
+# %%
+size=20
+numeric_features = load_data().select_dtypes(include=['float64', 'int64']).iloc[:, :size]
+corr_matrix = numeric_features.corr()
+plt.figure(figsize=(10, 8))
+sns.heatmap(corr_matrix, annot=True, cmap='coolwarm', fmt=".2f", linewidths=0.5)
+plt.title(f'Correlation Heatmap of the First {size} Features')
+plt.show() 
+# %%
