@@ -12,6 +12,20 @@ from sklearn.model_selection import train_test_split
 #%%
 
 def load_data(file_name):
+    """
+    Laadt een CSV-bestand vanuit de scriptmap en zet de eerste kolom als index.
+    
+    Parameters
+    ----------
+    file_name : str
+        Naam van het CSV-bestand (bijv. 'data.csv').
+    
+    Returns
+    -------
+    pd.DataFrame
+        Ingelezen DataFrame met index.
+
+    """
     this_directory = os.path.dirname(os.path.abspath(__file__))
     data_path = os.path.join(this_directory, file_name)
     
@@ -21,12 +35,21 @@ def load_data(file_name):
     return pd.read_csv(data_path, index_col=0)
 
 def explore_data(df):
+    """
+    Verken een DataFrame: shape, types, missing values, duplicates en klasseverdeling.
+    
+    Parameters
+    ----------
+    df : pd.DataFrame
+        DataFrame om te verkennen.
+    """
     print("\nGIST data")
     
     print(f"\nShape: {df.shape}")
     print(f"Number of rows: {df.shape[0]}")
     print(f"Number of columns: {df.shape[1]}")
 
+    print(df.iloc[0:5, 0:5])  # note: stop index is exclusive in iloc
     print("\nColumn Types:")
     print(df.dtypes.value_counts())
     
@@ -41,12 +64,8 @@ def explore_data(df):
     counts = labels.value_counts()
     print(f"\nClass counts:\n{counts}\n")
 
-
-
-    for i, col in enumerate(GIST_data.columns, 1):
+    for i, col in enumerate(df.columns, 1):
         print(f"{i:3d}. {col}")
-        # if i > 10:
-            # break
 
 def plot_feature_pairs(df):
     le = LabelEncoder()
@@ -87,7 +106,25 @@ def plot_heatmap(df, size=20):
     plt.show() 
 
 def split_pd(df):
-
+    """
+    Splitst een DataFrame in train/test (80/20) sets op basis van de 'label'-kolom.
+    
+    Parameters
+    ----------
+    df : pd.DataFrame
+        DataFrame met features + kolom 'label'.
+    
+    Returns
+    -------
+    X_train : pd.DataFrame
+        Feature DataFrame voor training
+    X_test : pd.DataFrame
+        Feature DataFrame voor test
+    y_train : pd.Series
+        Labels voor training
+    y_test : pd.Series
+        Labels voor test
+    """
     RANDOM_STATE = 42
 
     X = df.drop(columns=["label"])
@@ -115,12 +152,11 @@ def split_pd(df):
 
 #%%
 
-GIST_data = load_data('GIST_radiomicFeatures.csv')
+# GIST_data = load_data('GIST_radiomicFeatures.csv')
+# GIST_train, GIST_test, y_train, y_test = split_pd(GIST_data)
 
-explore_data(GIST_data)
 
-plot_feature_pairs(GIST_data)
+# explore_data(GIST_data)
+# plot_feature_pairs(GIST_data)
+# plot_heatmap(GIST_data)
 
-plot_heatmap(GIST_data)
-
-GIST_train, GIST_test, y_train, y_test = split_pd(GIST_data)
