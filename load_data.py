@@ -7,6 +7,8 @@ import matplotlib.pyplot as plt
 import nibabel as nib
 import seaborn as sns
 from sklearn.preprocessing import LabelEncoder
+from sklearn.model_selection import train_test_split
+
 
 #%%
 
@@ -25,7 +27,9 @@ def explore_data(df):
     print(f"\nShape: {df.shape}")
     print(f"Number of rows: {df.shape[0]}")
     print(f"Number of columns: {df.shape[1]}")
-    
+
+    display(GIST_data)
+
     print("\nColumn Types:")
     print(df.dtypes.value_counts())
     
@@ -77,13 +81,40 @@ def plot_feature_pairs(df):
     plt.tight_layout()
     plt.show()
 
-def plot_heatmap(GIST_data, size=20):
-    numeric_features = GIST_data.select_dtypes(include=['float64', 'int64']).iloc[:, :size]
+def plot_heatmap(df, size=20):
+    numeric_features = df.select_dtypes(include=['float64', 'int64']).iloc[:, :size]
     corr_matrix = numeric_features.corr()
     plt.figure(figsize=(10, 8))
     sns.heatmap(corr_matrix, annot=True, cmap='coolwarm', fmt=".2f", linewidths=0.5)
     plt.title(f'Correlation Heatmap of the First {size} Features')
     plt.show() 
+
+def split_pd(df):
+
+    RANDOM_STATE = 42
+
+    X = df.drop(columns=["label"])
+    y = df["label"]
+
+    X_train, X_test, y_train, y_test = train_test_split(
+        X,
+        y,
+        test_size=0.2,          
+        random_state=RANDOM_STATE,
+        shuffle=True,
+        stratify=y
+    )
+
+    print("Train size:", X_train.shape[0])
+    print("Test size:", X_test.shape[0])
+
+    print("\nTrain class distribution:")
+    print(y_train.value_counts(normalize=True))
+
+    print("\nTest class distribution:")
+    print(y_test.value_counts(normalize=True))
+    return X_train, X_test, y_train, y_test
+
 
 #%%
 
@@ -93,5 +124,6 @@ explore_data(GIST_data)
 
 plot_feature_pairs(GIST_data)
 
-plot_heatmap(GIST_data, size=20)
+plot_heatmap(GIST_data)
 
+GIST_train, GIST_test, y_train, y_test = split_pd(GIST_data)
