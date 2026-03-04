@@ -4,7 +4,6 @@ import pandas as pd
 import os
 import numpy as np
 import matplotlib.pyplot as plt
-import nibabel as nib
 import seaborn as sns
 from sklearn.preprocessing import LabelEncoder
 from sklearn.model_selection import train_test_split
