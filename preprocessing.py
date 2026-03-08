@@ -55,7 +55,8 @@ def apply_normalization(df):
         normalized dataframe
     """
     scaler = RobustScaler()
-    df_normalized = scaler.fit_transform(df)
+    scaled = scaler.fit_transform(df)
+    df_normalized = pd.DataFrame(scaled, columns=df.columns, index=df.index)
     return df_normalized
 
 #%%
@@ -63,7 +64,8 @@ def apply_normalization(df):
 GIST_data = load_data('GIST_radiomicFeatures.csv')
 GIST_train, GIST_test, y_train, y_test = split_pd(GIST_data)
 
+
+#%%
 winsorized_GIST_train = apply_winsorization(GIST_train)
 normalized_GIST_train = apply_normalization(winsorized_GIST_train)
-
 

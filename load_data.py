@@ -104,7 +104,7 @@ def plot_heatmap(df, size=20):
     plt.title(f'Correlation Heatmap of the First {size} Features')
     plt.show() 
 
-def split_pd(df):
+def split_pd(df, show_details = True):
     """
     Splitst een DataFrame in train/test (80/20) sets op basis van de 'label'-kolom.
     
@@ -138,21 +138,22 @@ def split_pd(df):
         stratify=y
     )
 
-    print("Train size:", X_train.shape[0])
-    print("Test size:", X_test.shape[0])
+    if show_details == True:
+        print("Train size:", X_train.shape[0])
+        print("Test size:", X_test.shape[0])
 
-    print("\nTrain class distribution:")
-    print(y_train.value_counts(normalize=True))
+        print("\nTrain class distribution:")
+        print(y_train.value_counts(normalize=True))
 
-    print("\nTest class distribution:")
-    print(y_test.value_counts(normalize=True))
+        print("\nTest class distribution:")
+        print(y_test.value_counts(normalize=True))
     return X_train, X_test, y_train, y_test
 
 
 #%%
 
-# GIST_data = load_data('GIST_radiomicFeatures.csv')
-# GIST_train, GIST_test, y_train, y_test = split_pd(GIST_data)
+GIST_data = load_data('GIST_radiomicFeatures.csv')
+GIST_train, GIST_test, y_train, y_test = split_pd(GIST_data, False)
 
 
 # explore_data(GIST_data)
