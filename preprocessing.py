@@ -62,7 +62,7 @@ def apply_normalization(df):
 #%%
 
 GIST_data = load_data('GIST_radiomicFeatures.csv')
-GIST_train, GIST_test, y_train, y_test = split_pd(GIST_data)
+GIST_train, GIST_test, y_train, y_test = split_pd(GIST_data, False)
 
 
 #%%
