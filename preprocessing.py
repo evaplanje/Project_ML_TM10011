@@ -14,21 +14,28 @@ GIST_train, GIST_test, y_train, y_test = split_pd(GIST_data)
 
 #%% Variance controleren, if there are features with zero variance, remove them?
 
-zero_variance_features = GIST_train.columns[GIST_train.var() == 0]
+def find_zero_variance_features(X):
+    zero_variance_features = X.columns[X.var() == 0]
 
-print(f"Features with zero variance: {list(zero_variance_features)}")
-print("Number of zero-varinace features:", len(zero_variance_features))
+    print(f"Features with zero variance: {list(zero_variance_features)}")
+    print("Number of zero-variance features:", len(zero_variance_features))
+
+    return zero_variance_features
+
+zero_variance_features = find_zero_variance_features(GIST_train)
 
 #%% Almost zero variance features (threshold = 0.01)
 
-variance = GIST_train.var()
+def find_low_variance_features(X, threshold=0.001):
+    variance = X.var()
+    low_variance_features = variance[variance < threshold].index
 
-threshold = 0.001
+    print(f"Features with variance below {threshold}: {list(low_variance_features)}")
+    print("Number of low-variance features:", len(low_variance_features))
 
-low_variance_features = variance[variance < threshold].index
+    return low_variance_features
 
-print(f"Features with variance below {threshold}: {list(low_variance_features)}")
-print("Number of low-variance features:", len(low_variance_features))
+low_variance_features = find_low_variance_features(GIST_train)
 
 
 #%% Missing values 
