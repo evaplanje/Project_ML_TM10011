@@ -137,6 +137,8 @@ def split_pd(df, show_details = True):
         shuffle=True,
         stratify=y
     )
+    y_train = y_train.map({'non-GIST': 0, 'GIST': 1})
+    y_test = y_test.map({'non-GIST': 0, 'GIST': 1})
 
     if show_details == True:
         print("Train size:", X_train.shape[0])
