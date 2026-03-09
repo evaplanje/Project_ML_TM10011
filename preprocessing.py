@@ -12,6 +12,17 @@ GIST_data = load_data("GIST_radiomicFeatures.csv")
 
 GIST_train, GIST_test, y_train, y_test = split_pd(GIST_data)
 
+#%% Missing values 
+
+def missing_values(df):
+    
+    print("\nMissing Values (Top 10):")
+    missing = df.isnull().sum()
+    missing = missing[missing > 0].sort_values(ascending=False)
+    print(missing.head(10) if not missing.empty else "No missing values found.")
+
+missing_values(GIST_train)
+
 #%% Variance controleren, if there are features with zero variance, remove them?
 
 def find_zero_variance_features(X):
@@ -37,17 +48,6 @@ def find_low_variance_features(X, threshold=0.001):
 
 low_variance_features = find_low_variance_features(GIST_train)
 
-
-#%% Missing values 
-
-def missing_values(df):
-    
-    print("\nMissing Values (Top 10):")
-    missing = df.isnull().sum()
-    missing = missing[missing > 0].sort_values(ascending=False)
-    print(missing.head(10) if not missing.empty else "No missing values found.")
-
-missing_values(GIST_train)
 
 #%% Outliers detecteren met IQR-methode
 
@@ -157,14 +157,3 @@ X_normalised_iqr = normalise_iqr(GIST_train)
 print(GIST_train.describe())
 print(X_normalised_iqr.describe())
 
-
-
-
-
-
-
-
-
-
-
-# %%
