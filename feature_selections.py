@@ -22,6 +22,10 @@ def reduce_features(df, correlation_threshold=0.97, show_details = True):
     -------
     pd.DataFrame
         reduced features dataframe
+
+    Index
+        features indexes
+
     """
     zero_var_cols = df.columns[~(df != df.iloc[0]).any()]
     df_reduced_var = df.drop(columns=zero_var_cols)
@@ -46,9 +50,21 @@ def reduce_features(df, correlation_threshold=0.97, show_details = True):
 
     return df_reduced, kept_features
 
-def lasso_feature_selection(X, y):
+def lasso_feature_selection(df, y):
     """
     LASSO-style feature selection using Logistic Regression with L1 penalty.
+    
+    Parameters
+    ----------
+    pd.DataFrame
+    
+    Returns
+    -------
+    pd.DataFrame
+        reduced features dataframe
+
+    index
+        features indexes
     """
 
     model = LogisticRegressionCV(

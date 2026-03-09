@@ -7,15 +7,6 @@ from load_data import load_data, split_pd, explore_data, plot_feature_pairs, plo
 from scipy.stats.mstats import winsorize
 from sklearn.preprocessing import RobustScaler
 
-
-#%%
-# Steps (https://www.sciencedirect.com/science/article/pii/S0933365721002232 + gemini)
-
-# Clipping (remove outliers)
-# Z-score normalization (https://www.sciencedirect.com/topics/computer-science/data-normalization)
-# balacned feautre selection (mix shape + texture), (LASSO or Random Forest Feature Importance)
-# multi-filter plot_feature_pairscost-senstive learning (weighted XGBoost/SVM)
-
 #%% 
 def apply_winsorization(df, limits=(0.02, 0.02)):
     """
@@ -35,7 +26,6 @@ def apply_winsorization(df, limits=(0.02, 0.02)):
     df_winsorized = df.copy()
     
     for col in df_winsorized.columns:
-        # We only winsorize numeric columns
         if np.issubdtype(df_winsorized[col].dtype, np.number):
             df_winsorized[col] = winsorize(df_winsorized[col], limits=limits)
             
@@ -63,7 +53,6 @@ def apply_normalization(df):
 
 GIST_data = load_data('GIST_radiomicFeatures.csv')
 GIST_train, GIST_test, y_train, y_test = split_pd(GIST_data, False)
-
 
 #%%
 winsorized_GIST_train = apply_winsorization(GIST_train)
