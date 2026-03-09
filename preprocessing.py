@@ -35,7 +35,7 @@ print(f"Features with variance below {threshold}: {list(low_variance_features)}"
 print("Number of low-variance features:", len(low_variance_features))
 
 
-#%% Preprocessing (only on train set) definitions
+#%% Missing values 
 
 def missing_values(df):
     
@@ -43,6 +43,10 @@ def missing_values(df):
     missing = df.isnull().sum()
     missing = missing[missing > 0].sort_values(ascending=False)
     print(missing.head(10) if not missing.empty else "No missing values found.")
+
+missing_values(GIST_train)
+
+#%% Outliers detecteren met IQR-methode
 
 def list_outliers_iqr(X, y, multiplier=1.5, max_per_feature=None):
     Q1 = X.quantile(0.25)
@@ -73,30 +77,91 @@ def list_outliers_iqr(X, y, multiplier=1.5, max_per_feature=None):
 
     return pd.DataFrame(records)
 
-missing_values(GIST_train)
-
 outliers_iqr = list_outliers_iqr(GIST_train, y_train, multiplier=1.5)
 
+outliers_per_feature_label = (
+    outliers_iqr
+    .groupby(["feature", "label"])
+    .size()
+    .unstack(fill_value=0)
+)
+
+print(outliers_per_feature_label)
+
 #%% Overlap tussen outliers en low-variance features
-outliers_iqr_features = set(outliers_iqr['feature'])
-low_variance_features_variance_features_set = set(low_variance_features)
-overlap = outliers_iqr_features.intersection(low_variance_features_variance_features_set)
 
-print(f"Overlap between outliers and low-variance features: {overlap}")
-print("Number of overlap between outliers and low-variance features:", len(overlap))
+def find_overlap_outliers_low_variance(outliers_df, low_variance_features):
+    outliers_features = set(outliers_df['feature'])
+    low_variance_set = set(low_variance_features)
+    overlap = outliers_features.intersection(low_variance_set)
+
+    print(f"Overlap between outliers and low-variance features: {overlap}")
+    print("Number of overlap between outliers and low-variance features:", len(overlap))
+
+    return overlap
+
+overlap_low_variance = find_overlap_outliers_low_variance(outliers_iqr, low_variance_features)
 
 #%% Overlap tussen outliers en low-variance features
 
-outliers_iqr_features = set(outliers_iqr['feature'])
-zero_variance_features_set = set(zero_variance_features)
+def find_overlap_outliers_zero_variance(outliers_df, zero_variance_features):
+    outliers_features = set(outliers_df['feature'])
+    zero_variance_set = set(zero_variance_features)
+    overlap = outliers_features.intersection(zero_variance_set)
 
-overlap_zero = outliers_iqr_features.intersection(zero_variance_features_set)
+    print(f"Overlap between outliers and zero-variance features: {overlap}")
+    print("Number of overlap between outliers and zero-variance features:", len(overlap))
 
-print(f"Overlap between outliers and zero-variance features: {overlap_zero}")
-print("Number of overlap between outliers and zero-variance features:", len(overlap_zero))
+    return overlap
+
+overlap_zero = find_overlap_outliers_zero_variance(outliers_iqr, zero_variance_features)
+
+#%% Normalisation with z-score
+
+def normalise_zscore(X):
+    X_normalised_zscore = X.copy()
+
+    for feature in X.columns:
+        mean = X[feature].mean()
+        std = X[feature].std()
+        if std != 0:
+            X_normalised_zscore[feature] = (X[feature] - mean) / std
+        else:
+            X_normalised_zscore[feature] = 0  
+
+    return X_normalised_zscore
+
+X_normalized_zscore = normalise_zscore(GIST_train)
+
+#%% Normalisation with IQR
+
+def normalise_iqr(X):
+    X_normalised_iqr = X.copy()
+
+    for feature in X.columns:
+        Q1 = X[feature].quantile(0.25)
+        Q3 = X[feature].quantile(0.75)
+        IQR = Q3 - Q1
+        if IQR != 0:
+            X_normalised_iqr[feature] = (X[feature] - Q1) / IQR
+        else:
+            X_normalised_iqr[feature] = 0
+
+    return X_normalised_iqr
+
+X_normalised_iqr = normalise_iqr(GIST_train)
+
+print(GIST_train.describe())
+print(X_normalised_iqr.describe())
 
 
 
 
 
 
+
+
+
+
+
+# %%
