@@ -1,14 +1,10 @@
 #%%
 
-
 import pandas as pd
-import os
 import numpy as np
 from load_data import load_data, split_pd, explore_data, plot_feature_pairs, plot_heatmap
 from preprocessing import apply_winsorization, apply_normalization
-import pandas as pd
-from sklearn.linear_model import LassoCV
-from sklearn.feature_selection import SelectFromModel
+from sklearn.linear_model import LogisticRegressionCV
 
 
 #%%
@@ -27,37 +23,56 @@ def reduce_features(df, correlation_threshold=0.97, show_details = True):
     pd.DataFrame
         reduced features dataframe
     """
-    df_reduced_var = df.loc[:, (df != df.iloc[0]).any()]    
+    zero_var_cols = df.columns[~(df != df.iloc[0]).any()]
+    df_reduced_var = df.drop(columns=zero_var_cols)
 
     corr_matrix = df_reduced_var.corr().abs()
     upper = corr_matrix.where(np.triu(np.ones(corr_matrix.shape), k=1).astype(bool))
-    
-    to_drop = [column for column in upper.columns if any(upper[column] > correlation_threshold)]
-    df_reduced_var_corr = df_reduced_var.drop(columns=to_drop)
 
-    if show_details == True:
+    corr_drop_cols = [
+        column for column in upper.columns
+        if any(upper[column] > correlation_threshold)
+    ]
+
+    df_reduced = df_reduced_var.drop(columns=corr_drop_cols)
+
+    kept_features = df_reduced.columns
+
+    if show_details:
         print(f"Number of features before: {df.shape[1]}")
-        print(f"Number of features remaining after var=0 drop: {df_reduced_var.shape[1]}")
-        print(f"Number of features remaining after var=0 and corr=0.95 drop: {df_reduced_var_corr.shape[1]}")
-    
-    return df_reduced_var_corr
+        print(f"Dropped zero variance features: {len(zero_var_cols)}")
+        print(f"Dropped highly correlated features: {len(corr_drop_cols)}")
+        print(f"Remaining features: {len(kept_features)}")
 
+    return df_reduced, kept_features
 
 def lasso_feature_selection(X, y):
-    lasso = LassoCV(cv=5, random_state=42)
-    lasso.fit(X, y)
+    """
+    LASSO-style feature selection using Logistic Regression with L1 penalty.
+    """
 
-    selector = SelectFromModel(lasso, prefit=True)
-    X_selected = selector.transform(X)
+    model = LogisticRegressionCV(
+        penalty='l1',
+        solver='liblinear',
+        cv=5,
+        Cs=[0.1, 1, 5, 10, 20, 50],
+        max_iter=5000,
+        random_state=42
+    )
 
-    selected_features = X.columns[selector.get_support()]
+    model.fit(X, y)
+
+    coefs = model.coef_[0]
+    mask = coefs != 0
+
+    selected_features = X.columns[mask]
 
     print("Selected features:", len(selected_features))
     print(selected_features)
 
-    X_selected_df = pd.DataFrame(X_selected, columns=selected_features, index=X.index)
+    X_selected = X.loc[:, selected_features]
 
-    return X_selected_df
+    return X_selected, selected_features
 
 #%%
 
@@ -67,5 +82,5 @@ winsorized_GIST_train = apply_winsorization(GIST_train)
 normalized_GIST_train = apply_normalization(winsorized_GIST_train)
 #%%
 
-filtered_GIST_train = reduce_features(normalized_GIST_train, correlation_threshold=0.97, show_details = False)
-feature_selected_GIST_train = lasso_feature_selection(filtered_GIST_train, y_train)
+filtered_GIST_train, corr_features = reduce_features(normalized_GIST_train,correlation_threshold=0.97, show_details=False)
+feature_selected_GIST_train, features_index = lasso_feature_selection(filtered_GIST_train,y_train)
