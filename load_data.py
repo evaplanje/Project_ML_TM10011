@@ -118,10 +118,9 @@ def split_pd(df):
 
 GIST_data = load_data('GIST_radiomicFeatures.csv')
 
-explore_data(GIST_data)
-
-plot_feature_pairs(GIST_data)
-
-plot_heatmap(GIST_data)
+if __name__ == "__main__":
+    explore_data(GIST_data)
+    plot_feature_pairs(GIST_data)
+    plot_heatmap(GIST_data)
 
 GIST_train, GIST_test, y_train, y_test = split_pd(GIST_data)
