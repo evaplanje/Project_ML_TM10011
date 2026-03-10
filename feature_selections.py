@@ -49,12 +49,11 @@ def remove_highly_correlated_features(df, correlation_threshold=0.97, show_detai
 #%%
 
 GIST_data = load_data('GIST_radiomicFeatures.csv')
-GIST_train, GIST_test, y_train, y_test = split_pd(GIST_data, show_details = False)
-normalized_GIST_train = apply_normalization(GIST_train)
+GIST_train, GIST_test, y_train, y_test = split_pd(GIST_data, False)
+normalized_GIST_train, scaler = apply_normalization(GIST_train)
 preproc_GIST_train, kept_features = remove_zero_variance_features(normalized_GIST_train, show_details=False)
 
 #%%
 
 corr_features_index = remove_highly_correlated_features(preproc_GIST_train,correlation_threshold=0.97, show_details=True)##%
 
-plot.heatmap(corr)

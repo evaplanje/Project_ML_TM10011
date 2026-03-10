@@ -148,10 +148,11 @@ def lasso_feature_selection(
         print(importance[["feature", "coef"]].head(10))
 
     return df_selected, selected_features
-#%% 
+#%% DEZE PIPELINE kopieren
+
 GIST_data = load_data('GIST_radiomicFeatures.csv')
-GIST_train, GIST_test, y_train, y_test = split_pd(GIST_data, show_details = False)
-normalized_GIST_train = apply_normalization(GIST_train)
+GIST_train, GIST_test, y_train, y_test = split_pd(GIST_data, False)
+normalized_GIST_train, scaler = apply_normalization(GIST_train)
 preproc_GIST_train, kept_features = remove_zero_variance_features(normalized_GIST_train, show_details=False)
 
 #%%
