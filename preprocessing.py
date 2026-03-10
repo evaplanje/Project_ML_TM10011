@@ -9,29 +9,6 @@ from sklearn.preprocessing import RobustScaler
 
 #%% 
 
-def apply_winsorization(df, limits=(0.02, 0.02)):
-    """
-    Limits (0.01, 0.01) means:
-    - Values below the 1st percentile are set to the 1st percentile.
-    - Values above the 99th percentile are set to the 99th percentile.
-
-    Parameters
-    ----------
-    pd.DataFrame
-    
-    Returns
-    -------
-    pd.DataFrame
-        winsorized dataframe
-    """
-    df_winsorized = df.copy()
-    
-    for col in df_winsorized.columns:
-        if np.issubdtype(df_winsorized[col].dtype, np.number):
-            df_winsorized[col] = winsorize(df_winsorized[col], limits=limits)
-            
-    return df_winsorized
-
 def apply_normalization(df):
     """
     It centers your data and scales it based on the 25th and 75th percentiles.
@@ -48,7 +25,7 @@ def apply_normalization(df):
     scaler = RobustScaler()
     scaled = scaler.fit_transform(df)
     df_normalized = pd.DataFrame(scaled, columns=df.columns, index=df.index)
-    return df_normalized
+    return df_normalized, scaler
 
 def remove_zero_variance_features(df, show_details=True):
     """
@@ -83,6 +60,5 @@ GIST_train, GIST_test, y_train, y_test = split_pd(GIST_data, False)
 
 #%%
 
-winsorized_GIST_train = apply_winsorization(GIST_train)
-normalized_GIST_train = apply_normalization(winsorized_GIST_train)
+normalized_GIST_train, scaler = apply_normalization(GIST_train)
 preproc_GIST_train, kept_features = remove_zero_variance_features(normalized_GIST_train, show_details=False)
