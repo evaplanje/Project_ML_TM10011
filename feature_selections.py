@@ -6,7 +6,6 @@ from load_data import load_data, split_pd, explore_data, plot_feature_pairs, plo
 from preprocessing import apply_winsorization, apply_normalization
 from sklearn.linear_model import LogisticRegressionCV
 
-
 #%%
 
 def reduce_features(df, correlation_threshold=0.97, show_details = True):
@@ -50,7 +49,7 @@ def reduce_features(df, correlation_threshold=0.97, show_details = True):
 
     return df_reduced, kept_features
 
-def lasso_feature_selection(df, y):
+def lasso_feature_selection(df, y, show_details = True):
     """
     LASSO-style feature selection using Logistic Regression with L1 penalty.
     
@@ -76,17 +75,17 @@ def lasso_feature_selection(df, y):
         random_state=42
     )
 
-    model.fit(X, y)
+    model.fit(df, y)
 
     coefs = model.coef_[0]
     mask = coefs != 0
 
-    selected_features = X.columns[mask]
+    selected_features = df.columns[mask]
+    if show_details:
+        print("Selected features:", len(selected_features))
+        print(selected_features)
 
-    print("Selected features:", len(selected_features))
-    print(selected_features)
-
-    X_selected = X.loc[:, selected_features]
+    X_selected = df.loc[:, selected_features]
 
     return X_selected, selected_features
 
@@ -96,7 +95,8 @@ GIST_data = load_data('GIST_radiomicFeatures.csv')
 GIST_train, GIST_test, y_train, y_test = split_pd(GIST_data, show_details = False)
 winsorized_GIST_train = apply_winsorization(GIST_train)
 normalized_GIST_train = apply_normalization(winsorized_GIST_train)
+
 #%%
 
-filtered_GIST_train, corr_features = reduce_features(normalized_GIST_train,correlation_threshold=0.97, show_details=False)
-feature_selected_GIST_train, features_index = lasso_feature_selection(filtered_GIST_train,y_train)
+filtered_GIST_train, corr_features_index = reduce_features(normalized_GIST_train,correlation_threshold=0.97, show_details=False)
+feature_selected_GIST_train, features_index = lasso_feature_selection(filtered_GIST_train,y_train, show_details=False)

@@ -57,4 +57,3 @@ GIST_train, GIST_test, y_train, y_test = split_pd(GIST_data, False)
 #%%
 winsorized_GIST_train = apply_winsorization(GIST_train)
 normalized_GIST_train = apply_normalization(winsorized_GIST_train)
-
