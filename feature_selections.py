@@ -101,5 +101,3 @@ normalized_GIST_train = apply_normalization(winsorized_GIST_train)
 filtered_GIST_train, corr_features_index = reduce_features(normalized_GIST_train,correlation_threshold=0.97, show_details=False)
 feature_selected_GIST_train, features_index = lasso_feature_selection(filtered_GIST_train,y_train, show_details=False)
 ##%
-
-# hallo
