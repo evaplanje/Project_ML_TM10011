@@ -49,45 +49,6 @@ def reduce_features(df, correlation_threshold=0.97, show_details = True):
 
     return df_reduced, kept_features
 
-def lasso_feature_selection(df, y, show_details = True):
-    """
-    LASSO-style feature selection using Logistic Regression with L1 penalty.
-    
-    Parameters
-    ----------
-    pd.DataFrame
-    
-    Returns
-    -------
-    pd.DataFrame
-        reduced features dataframe
-
-    index
-        features indexes
-    """
-
-    model = LogisticRegressionCV(
-        penalty='l1',
-        solver='liblinear',
-        cv=5,
-        Cs=[0.1, 1, 5, 10, 20, 50],
-        max_iter=5000,
-        random_state=42
-    )
-
-    model.fit(df, y)
-
-    coefs = model.coef_[0]
-    mask = coefs != 0
-
-    selected_features = df.columns[mask]
-    if show_details:
-        print("Selected features:", len(selected_features))
-        print(selected_features)
-
-    X_selected = df.loc[:, selected_features]
-
-    return X_selected, selected_features
 
 #%%
 
@@ -98,6 +59,4 @@ normalized_GIST_train = apply_normalization(winsorized_GIST_train)
 
 #%%
 
-filtered_GIST_train, corr_features_index = reduce_features(normalized_GIST_train,correlation_threshold=0.97, show_details=False)
-feature_selected_GIST_train, features_index = lasso_feature_selection(filtered_GIST_train,y_train, show_details=False)
-##%
+filtered_GIST_train, corr_features_index = reduce_features(normalized_GIST_train,correlation_threshold=0.97, show_details=False)##%
