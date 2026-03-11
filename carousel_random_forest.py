@@ -3,7 +3,7 @@ import pandas as pd
 from sklearn.model_selection import StratifiedKFold
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score, roc_auc_score
-from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import RobustScaler
 import itertools
 from fs_lasso import fs_lasso
 from load_data import load_data, split_pd, explore_data, plot_feature_pairs, plot_heatmap
@@ -18,8 +18,6 @@ from sklearn.pipeline import Pipeline
 
 
 
-
-
 fs_methods = {
     'lasso': fs_lasso,
 
@@ -28,24 +26,20 @@ fs_methods = {
     # 'statistical': fs_statistical
 }
 
-# --- 2. Define Hyperparameter Grids ---
-# Random Forest parameters to test
 rf_param_grid = {
-    'n_estimators': [200],
-    'max_depth': [5],
-    'min_samples_split': [5]
+    'n_estimators': [50, 100, 200],
+    'max_depth': [None, 5, 10],
+    'min_samples_split': [2, 5]
 }
 
 # Create a list of all RF parameter combinations
 rf_keys, rf_values = zip(*rf_param_grid.items())
 rf_param_combinations = [dict(zip(rf_keys, v)) for v in itertools.product(*rf_values)]
 
-# --- 3. Nested Cross-Validation Setup ---
-
+# import
 GIST_data = load_data('GIST_radiomicFeatures.csv')
 GIST_train, GIST_test, y_train, y_test = split_pd(GIST_data, False)
-normalized_GIST_train, scaler = apply_normalization(GIST_train)
-preproc_GIST_train, kept_features = remove_zero_variance_features(normalized_GIST_train, show_details=False)
+preproc_GIST_train, kept_features = remove_zero_variance_features(GIST_train, show_details=False)
 
 X = preproc_GIST_train # Your pandas DataFrame (200, n_features)
 y = y_train.values # Your classes array (200,)
@@ -65,7 +59,7 @@ for outer_fold, (train_idx, test_idx) in enumerate(outer_cv.split(X, y)):
     y_train_outer, y_test_outer = y[train_idx], y[test_idx]
     
     # Radiomics usually requires scaling (do this AFTER splitting to avoid leakage)
-    scaler = StandardScaler()
+    scaler = RobustScaler()
     X_train_outer_scaled = pd.DataFrame(scaler.fit_transform(X_train_outer), columns=X_train_outer.columns)
     X_test_outer_scaled = pd.DataFrame(scaler.transform(X_test_outer), columns=X_test_outer.columns)
 
