@@ -4,8 +4,8 @@ import pandas as pd
 import numpy as np
 from load_data import load_data, split_pd, explore_data, plot_feature_pairs, plot_heatmap
 from preprocessing import apply_normalization, remove_zero_variance_features
-from sklearn.linear_model import LogisticRegressionCV
-from sklearn.preprocessing import StandardScaler
+from sklearn.linear_model import LogisticRegression 
+from sklearn.pipeline import Pipeline
 from sklearn.pipeline import Pipeline
 
 
@@ -18,6 +18,7 @@ def remove_highly_correlated_features(df, correlation_threshold=0.99, show_detai
     ----------
     df : pd.DataFrame
     correlation_threshold : float
+
 
     Returns
     -------
@@ -51,48 +52,30 @@ def remove_highly_correlated_features(df, correlation_threshold=0.99, show_detai
 def lasso_feature_selection(
         df,
         y,
-        penalty="l1",
+        C=0.1, 
         solver="saga",
-        Cs=50,
-        cv=5,
-        scoring="roc_auc",
         max_iter=10000,
         class_weight="balanced",
-        n_jobs=-1,
+        # Removed n_jobs from the parameters here
         random_state=42,
-        show_details = False):
+        show_details=False):
     """
-    Perform feature selection using regularized logistic regression (Elastic Net / LASSO).
-
-    Parameters
-    ----------
-    df : pd.DataFrame
-        Input features.
-    y : array-like
-        Target labels.
-    penalty : str, default="saga"
-        Type of regularization. 'elasticnet' is recommended for correlated features.
-        Set to 'l1' for pure LASSO.
-    l1_ratios : list of floats
-        The Elastic-Net mixing parameter. 1.0 is pure L1 (LASSO), 0.0 is pure L2 (Ridge).
-    Cs : int or array
-        Regularization strengths tested during CV.
+    Perform feature selection using standard regularized logistic regression (LASSO).
+    Updated for scikit-learn >= 1.8 compatibility.
     """
-
-    # Configure LogisticRegressionCV based on penalty type
-    model = LogisticRegressionCV(
-        penalty=penalty,
+    
+    # Configure standard LogisticRegression without deprecated arguments
+    model = LogisticRegression(
+        l1_ratio=1,      # <-- This replaces penalty="l1" in newer scikit-learn versions
+        C=C,          
         solver=solver,
-        Cs=Cs,
-        cv=cv,
-        scoring=scoring,
         max_iter=max_iter,
         class_weight=class_weight,
-        n_jobs=n_jobs,
+        # <-- n_jobs has been completely removed
         random_state=random_state
     )
-    pipeline = Pipeline([("model", model)])
     
+    pipeline = Pipeline([("model", model)])
     pipeline.fit(df, y)
     fitted_model = pipeline.named_steps["model"]
     
@@ -101,16 +84,22 @@ def lasso_feature_selection(
     else:
         coefs = np.max(np.abs(fitted_model.coef_), axis=0)
 
+    # Prevent error if Lasso drops ALL features (coefs == 0)
     selected_features = list(df.columns[coefs != 0])
+    
+    # Fallback: If Lasso picks 0 features, grab the top 3 strongest features
+    if len(selected_features) == 0:
+        if show_details:
+            print("Lasso dropped all features! Falling back to top 3 features.")
+        top_indices = np.argsort(np.abs(coefs))[-3:]
+        selected_features = list(df.columns[top_indices])
+
     df_selected = df[selected_features]
 
     if show_details:
         print(f"Features before selection: {df.shape[1]}")
         print(f"Selected features: {len(selected_features)}")
         
-        if penalty == "elasticnet":
-            print(f"Optimal l1_ratio chosen: {fitted_model.l1_ratio_[0]}")
-
         importance = pd.DataFrame({
             "feature": df.columns,
             "coef": coefs
@@ -126,26 +115,26 @@ def lasso_feature_selection(
     return df_selected, selected_features
 
 def fs_lasso(df, y_train):
-    preproc_GIST_train_wo_high_corr_features, kept_features = remove_highly_correlated_features(
-        df, correlation_threshold=0.97,
+    preproc_GIST_train_wo_high_corr, kept_features = remove_highly_correlated_features(
+        df, 
+        correlation_threshold=0.97, 
         show_details=False
     )
-    GIST_train_lasso, kept_features = lasso_feature_selection(
-        preproc_GIST_train_wo_high_corr_features,
+    
+    GIST_train_lasso, final_kept_features = lasso_feature_selection(
+        preproc_GIST_train_wo_high_corr,
         y_train,
-        penalty="l1",
+        C=0.01, 
         solver="saga",
-        Cs=np.logspace(-3, 3, 50),
-        cv=5,
-        scoring="roc_auc",
         max_iter=10000,
         class_weight="balanced",
-        n_jobs=-1,
+        # Make sure n_jobs=-1 is deleted here too!
         random_state=42,
-        show_details = False
-        )
+        show_details=False
+    )
 
-    return GIST_train_lasso, kept_features
+    return GIST_train_lasso, final_kept_features
+
 
 #%% DEZE PIPELINE kopieren
 

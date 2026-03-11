@@ -22,9 +22,6 @@ from sklearn.pipeline import Pipeline
 
 fs_methods = {
     'lasso': fs_lasso,
-    'lasso1': fs_lasso,
-    'lasso2': fs_lasso,
-    'lasso3': fs_lasso,
 
     # 'groupwise': fs_groupwise,
     # 'pca': fs_pca,
@@ -34,9 +31,9 @@ fs_methods = {
 # --- 2. Define Hyperparameter Grids ---
 # Random Forest parameters to test
 rf_param_grid = {
-    'n_estimators': [50, 100, 200],
-    'max_depth': [None, 5, 10],
-    'min_samples_split': [2, 5]
+    'n_estimators': [200],
+    'max_depth': [5],
+    'min_samples_split': [5]
 }
 
 # Create a list of all RF parameter combinations
@@ -51,7 +48,7 @@ normalized_GIST_train, scaler = apply_normalization(GIST_train)
 preproc_GIST_train, kept_features = remove_zero_variance_features(normalized_GIST_train, show_details=False)
 
 X = preproc_GIST_train # Your pandas DataFrame (200, n_features)
-y = y_train # Your classes array (200,)
+y = y_train.values # Your classes array (200,)
 
 # Outer loop evaluates the model's true performance
 outer_cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
