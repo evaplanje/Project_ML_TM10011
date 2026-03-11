@@ -117,14 +117,14 @@ def lasso_feature_selection(
 def fs_lasso(df, y_train):
     preproc_GIST_train_wo_high_corr, kept_features = remove_highly_correlated_features(
         df, 
-        correlation_threshold=0.97, 
+        correlation_threshold=0.9, 
         show_details=False
     )
     
     GIST_train_lasso, final_kept_features = lasso_feature_selection(
         preproc_GIST_train_wo_high_corr,
         y_train,
-        C=0.01, 
+        C=0.04, 
         solver="saga",
         max_iter=10000,
         class_weight="balanced",
@@ -145,4 +145,4 @@ preproc_GIST_train, kept_features = remove_zero_variance_features(normalized_GIS
 
 #%%
 
-GIST_train_lasso, kept_features = fs_lasso(preproc_GIST_train, y_train)
+GIST_train_lasso, kept_features = fs_lasso(preproc_GIST_train.iloc[:106], y_train.iloc[:106])

@@ -20,7 +20,7 @@ from sklearn.pipeline import Pipeline
 
 fs_methods = {
     'lasso': fs_lasso,
-
+    # maybe use RF importance → top 30 features
     # 'groupwise': fs_groupwise,
     # 'pca': fs_pca,
     # 'statistical': fs_statistical
@@ -88,7 +88,7 @@ for outer_fold, (train_idx, test_idx) in enumerate(outer_cv.split(X, y)):
                 X_val_inner_sel = X_val_inner[selected_features]
                 
                 # 3. Train Random Forest
-                rf = RandomForestClassifier(**rf_params, random_state=42)
+                rf = RandomForestClassifier(**rf_params, random_state=42, bootstrap=True, max_features='sqrt')
                 rf.fit(X_train_inner_sel, y_train_inner)
                 
                 # 4. Evaluate (e.g., using accuracy, or change to ROC-AUC)
@@ -113,7 +113,8 @@ for outer_fold, (train_idx, test_idx) in enumerate(outer_cv.split(X, y)):
     _, final_selected_features = winning_fs_func(X_train_outer_scaled, y_train_outer)
     
     # Train the best Random Forest on the outer training set
-    final_rf = RandomForestClassifier(**best_rf_params, random_state=42)
+    final_rf = RandomForestClassifier(**best_rf_params, random_state=42, bootstrap=True, max_features='sqrt'
+)
     final_rf.fit(X_train_outer_scaled[final_selected_features], y_train_outer)
     
     # Test on the held-out outer test set
