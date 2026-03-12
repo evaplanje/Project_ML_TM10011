@@ -88,7 +88,7 @@ for outer_fold, (train_idx, test_idx) in enumerate(outer_cv.split(X, y)):
                 X_val_inner_sel = X_val_inner[selected_features]
                 
                 # 3. Train Random Forest
-                rf = RandomForestClassifier(**rf_params, random_state=42, bootstrap=True, max_features='sqrt')
+                rf = RandomForestClassifier(**rf_params, bootstrap=True, max_features='sqrt')
                 rf.fit(X_train_inner_sel, y_train_inner)
                 
                 # 4. Evaluate (e.g., using accuracy, or change to ROC-AUC)
