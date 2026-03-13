@@ -10,11 +10,11 @@ from load_data import load_data, split_pd, explore_data, plot_feature_pairs, plo
 from preprocessing import apply_normalization, remove_zero_variance_features
 from sklearn.linear_model import LogisticRegressionCV
 from sklearn.pipeline import Pipeline
+from fs_statistical import fs_statistical
 
 
 # from fs_groupwise import fs_groupwise
 # from fs_pca import fs_pca
-# from fs_statistical import fs_statistical
 
 
 
@@ -23,7 +23,7 @@ fs_methods = {
     # maybe use RF importance → top 30 features
     # 'groupwise': fs_groupwise,
     # 'pca': fs_pca,
-    # 'statistical': fs_statistical
+    'statistical': fs_statistical
 }
 
 rf_param_grid = {
