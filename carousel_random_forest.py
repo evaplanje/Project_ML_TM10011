@@ -45,9 +45,9 @@ X = preproc_GIST_train # Your pandas DataFrame (200, n_features)
 y = y_train.values # Your classes array (200,)
 
 # Outer loop evaluates the model's true performance
-outer_cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+outer_cv = StratifiedKFold(n_splits=5, shuffle=True)
 # Inner loop tunes the hyperparameters and feature selection
-inner_cv = StratifiedKFold(n_splits=3, shuffle=True, random_state=42)
+inner_cv = StratifiedKFold(n_splits=3, shuffle=True)
 
 outer_results = []
 
@@ -113,7 +113,7 @@ for outer_fold, (train_idx, test_idx) in enumerate(outer_cv.split(X, y)):
     _, final_selected_features = winning_fs_func(X_train_outer_scaled, y_train_outer)
     
     # Train the best Random Forest on the outer training set
-    final_rf = RandomForestClassifier(**best_rf_params, random_state=42, bootstrap=True, max_features='sqrt'
+    final_rf = RandomForestClassifier(**best_rf_params, bootstrap=True, max_features='sqrt'
 )
     final_rf.fit(X_train_outer_scaled[final_selected_features], y_train_outer)
     

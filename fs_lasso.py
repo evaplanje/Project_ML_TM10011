@@ -57,7 +57,6 @@ def lasso_feature_selection(
         max_iter=10000,
         class_weight="balanced",
         # Removed n_jobs from the parameters here
-        random_state=42,
         show_details=False):
     """
     Perform feature selection using standard regularized logistic regression (LASSO).
@@ -66,13 +65,12 @@ def lasso_feature_selection(
     
     # Configure standard LogisticRegression without deprecated arguments
     model = LogisticRegression(
-        l1_ratio=1,      # <-- This replaces penalty="l1" in newer scikit-learn versions
+        l1_ratio=1,   
         C=C,          
         solver=solver,
         max_iter=max_iter,
         class_weight=class_weight,
         # <-- n_jobs has been completely removed
-        random_state=random_state
     )
     
     pipeline = Pipeline([("model", model)])
@@ -129,7 +127,6 @@ def fs_lasso(df, y_train):
         max_iter=10000,
         class_weight="balanced",
         # Make sure n_jobs=-1 is deleted here too!
-        random_state=42,
         show_details=False
     )
 
