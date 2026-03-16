@@ -1,3 +1,4 @@
+#%%
 import numpy as np
 import pandas as pd
 from sklearn.model_selection import StratifiedKFold
@@ -11,19 +12,21 @@ from preprocessing import apply_normalization, remove_zero_variance_features
 from sklearn.linear_model import LogisticRegressionCV
 from sklearn.pipeline import Pipeline
 from fs_statistical import fs_statistical
+from fs_RFE import perform_rfe
 
 
 # from fs_groupwise import fs_groupwise
 # from fs_pca import fs_pca
 
 
-
+#%%
 fs_methods = {
     'lasso': fs_lasso,
     # maybe use RF importance → top 30 features
     # 'groupwise': fs_groupwise,
     # 'pca': fs_pca,
-    'statistical': fs_statistical
+    'statistical': fs_statistical,
+    'rfe': perform_rfe
 }
 
 rf_param_grid = {
@@ -134,3 +137,4 @@ results_df = pd.DataFrame(outer_results)
 print("\n=== Final Outer Loop Results ===")
 print(results_df)
 print(f"\nAverage Test Accuracy: {results_df['test_accuracy'].mean():.3f} +/- {results_df['test_accuracy'].std():.3f}")
+# %%
