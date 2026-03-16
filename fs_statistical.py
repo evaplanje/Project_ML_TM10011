@@ -50,39 +50,21 @@ def remove_highly_correlated_features(df, correlation_threshold=0.99, show_detai
 
     return df_reduced, kept_features
 
-def fisher_feature_selection(X, y, k=20, show_details=True):
-    X_np = X.to_numpy(dtype=float)
-    y_np = np.asarray(y).ravel()
-
-    scores = fisher_score.fisher_score(X_np, y_np)
-    ranked_idx = np.argsort(scores)[::-1]
-
-    top_idx = ranked_idx[:k]
-    selected_features = X.columns[top_idx]
-    fisher_selected_features = X.loc[:, selected_features]
-
-    if show_details:
-        print("Selected features:")
-        print(selected_features.tolist())
-
-    return fisher_selected_features, selected_features, scores
-
-def fs_statistical(df, y_train):
-    preproc_GIST_train_wo_high_corr, kept_features = remove_highly_correlated_features(
-        df, 
-        correlation_threshold=0.9, 
+def fs_statistical(df, y_train, k=20):
+    df_red, _ = remove_highly_correlated_features(
+        df,
+        correlation_threshold=0.9,
         show_details=False
     )
-    
-    GIST_train_fisher, final_kept_features, _ = fisher_feature_selection(
-    preproc_GIST_train_wo_high_corr,
-    y_train,
-    k=20,
-    show_details=False
+
+    scores = fisher_score.fisher_score(
+        df_red.values.astype(float),
+        np.asarray(y_train).ravel()
     )
+    idx = np.argsort(scores)[::-1][:k]
+    selected_features = df_red.columns[idx]
 
-    return GIST_train_fisher, final_kept_features
-
+    return df_red[selected_features], selected_features
    
 #%% 
 GIST_data = load_data('GIST_radiomicFeatures.csv')
@@ -90,16 +72,10 @@ GIST_train, GIST_test, y_train, y_test = split_pd(GIST_data, False)
 normalized_GIST_train, scaler = apply_normalization(GIST_train)
 preproc_GIST_train, kept_features = remove_zero_variance_features(normalized_GIST_train, show_details=False)
 
-#%% print selected features
+#%% Fisher feature selection
+GIST_train_fisher, selected_features = fs_statistical(preproc_GIST_train, y_train)
 
-# Fisher feature selection
-#fisher_selected_features, fisher_idx, fisher_scores = fisher_feature_selection(preproc_GIST_train, y_train, k=20, show_details=True)
-
-#plot_heatmap(fisher_selected_features)
-
-GIST_train_fisher, kept_features = fs_statistical(preproc_GIST_train.iloc[:106], y_train.iloc[:106])
-
-print(kept_features)
+print(selected_features)
 plot_heatmap(GIST_train_fisher)
 
 
