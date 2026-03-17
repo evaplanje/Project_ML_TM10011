@@ -8,11 +8,11 @@ from sklearn.preprocessing import RobustScaler
 import itertools
 from fs_lasso import fs_lasso
 from load_data import load_data, split_pd, explore_data, plot_feature_pairs, plot_heatmap
-from preprocessing import apply_normalization, remove_zero_variance_features
+from preprocessing import remove_highly_correlated_features, remove_zero_variance_features
 from sklearn.linear_model import LogisticRegressionCV
 from sklearn.pipeline import Pipeline
-from fs_statistical import fs_statistical
-from fs_RFE import perform_rfe
+# from fs_statistical import fs_statistical
+# from fs_RFE import perform_rfe
 
 
 # from fs_groupwise import fs_groupwise
@@ -25,8 +25,8 @@ fs_methods = {
     # maybe use RF importance → top 30 features
     # 'groupwise': fs_groupwise,
     # 'pca': fs_pca,
-    'statistical': fs_statistical,
-    'rfe': perform_rfe
+    # 'statistical': fs_statistical,
+    # 'rfe': perform_rfe
 }
 
 rf_param_grid = {
@@ -43,6 +43,7 @@ rf_param_combinations = [dict(zip(rf_keys, v)) for v in itertools.product(*rf_va
 GIST_data = load_data('GIST_radiomicFeatures.csv')
 GIST_train, GIST_test, y_train, y_test = split_pd(GIST_data, False)
 preproc_GIST_train, kept_features = remove_zero_variance_features(GIST_train, show_details=False)
+preproc_GIST_train, kept_features = remove_highly_correlated_features(preproc_GIST_train, correlation_threshold=0.90, show_details=False)
 
 X = preproc_GIST_train # Your pandas DataFrame (200, n_features)
 y = y_train.values # Your classes array (200,)
@@ -132,9 +133,219 @@ for outer_fold, (train_idx, test_idx) in enumerate(outer_cv.split(X, y)):
         'test_accuracy': outer_score
     })
 
+#%%
 # --- Final Results ---
 results_df = pd.DataFrame(outer_results)
 print("\n=== Final Outer Loop Results ===")
 print(results_df)
 print(f"\nAverage Test Accuracy: {results_df['test_accuracy'].mean():.3f} +/- {results_df['test_accuracy'].std():.3f}")
 # %%
+#%%
+import numpy as np
+import pandas as pd
+from sklearn.model_selection import StratifiedKFold
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import accuracy_score
+from sklearn.preprocessing import RobustScaler
+import itertools
+import random
+
+from fs_lasso import fs_lasso
+from load_data import load_data, split_pd
+from preprocessing import remove_highly_correlated_features, remove_zero_variance_features
+
+#%% ---------------- SETTINGS ----------------
+
+# LASSO grid (smaller)
+C_values = np.linspace(0.005, 0.1, 5)
+
+# RF grid (we will RANDOMLY sample from this)
+rf_param_grid = {
+    'n_estimators': [50, 100, 200],
+    'max_depth': [None, 5, 10],
+    'min_samples_split': [2, 5]
+}
+
+rf_keys, rf_values = zip(*rf_param_grid.items())
+all_rf_combinations = [dict(zip(rf_keys, v)) for v in itertools.product(*rf_values)]
+
+# sample only 5 RF configs
+rf_param_combinations = random.sample(all_rf_combinations, 5)
+
+# Fixed RF for LASSO tuning
+rf_fixed = RandomForestClassifier(
+    n_estimators=100,
+    max_depth=None,
+    min_samples_split=2,
+    bootstrap=True,
+    max_features='sqrt',
+    random_state=42,
+    n_jobs=-1
+)
+
+#%% ---------------- LOAD & PREPROCESS ----------------
+
+GIST_data = load_data('GIST_radiomicFeatures.csv')
+GIST_train, GIST_test, y_train, y_test = split_pd(GIST_data, False)
+
+preproc_GIST_train, _ = remove_zero_variance_features(GIST_train, show_details=False)
+preproc_GIST_train, _ = remove_highly_correlated_features(
+    preproc_GIST_train, correlation_threshold=0.90, show_details=False
+)
+
+X = preproc_GIST_train
+y = y_train.values
+
+#%% ---------------- NESTED CV ----------------
+
+outer_cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+inner_cv = StratifiedKFold(n_splits=3, shuffle=True, random_state=42)
+
+outer_results = []
+
+for outer_fold, (train_idx, test_idx) in enumerate(outer_cv.split(X, y)):
+    print(f"\n--- Outer Fold {outer_fold + 1} ---")
+
+    X_train_outer, X_test_outer = X.iloc[train_idx], X.iloc[test_idx]
+    y_train_outer, y_test_outer = y[train_idx], y[test_idx]
+
+    # Scaling
+    scaler = RobustScaler()
+    X_train_outer_scaled = pd.DataFrame(
+        scaler.fit_transform(X_train_outer),
+        columns=X_train_outer.columns
+    )
+    X_test_outer_scaled = pd.DataFrame(
+        scaler.transform(X_test_outer),
+        columns=X_test_outer.columns
+    )
+
+    # ==========================================================
+    # 🔹 STAGE 1: TUNE LASSO (C)
+    # ==========================================================
+    best_C = None
+    best_score_C = -1
+
+    for C in C_values:
+        inner_scores = []
+
+        for inner_train_idx, inner_val_idx in inner_cv.split(X_train_outer_scaled, y_train_outer):
+
+            X_train_inner = X_train_outer_scaled.iloc[inner_train_idx]
+            y_train_inner = y_train_outer[inner_train_idx]
+            X_val_inner = X_train_outer_scaled.iloc[inner_val_idx]
+            y_val_inner = y_train_outer[inner_val_idx]
+
+            # Feature selection
+            _, selected_features = fs_lasso(X_train_inner, y_train_inner, C=C)
+
+            if len(selected_features) == 0:
+                continue
+
+            # Train fixed RF
+            rf_fixed.fit(X_train_inner[selected_features], y_train_inner)
+            preds = rf_fixed.predict(X_val_inner[selected_features])
+
+            score = accuracy_score(y_val_inner, preds)
+            inner_scores.append(score)
+
+        if len(inner_scores) == 0:
+            continue
+
+        avg_score = np.mean(inner_scores)
+
+        if avg_score > best_score_C:
+            best_score_C = avg_score
+            best_C = C
+
+    print(f"Best C: {best_C}")
+
+    # ==========================================================
+    # 🔹 STAGE 2: SELECT FEATURES WITH BEST C
+    # ==========================================================
+    _, selected_features = fs_lasso(
+        X_train_outer_scaled,
+        y_train_outer,
+        C=best_C
+    )
+
+    print(f"Selected {len(selected_features)} features")
+
+    # ==========================================================
+    # 🔹 STAGE 3: TUNE RF (on selected features only)
+    # ==========================================================
+    best_rf_params = None
+    best_rf_score = -1
+
+    for rf_params in rf_param_combinations:
+        inner_scores = []
+
+        for inner_train_idx, inner_val_idx in inner_cv.split(X_train_outer_scaled, y_train_outer):
+
+            X_train_inner = X_train_outer_scaled.iloc[inner_train_idx][selected_features]
+            y_train_inner = y_train_outer[inner_train_idx]
+            X_val_inner = X_train_outer_scaled.iloc[inner_val_idx][selected_features]
+            y_val_inner = y_train_outer[inner_val_idx]
+
+            rf = RandomForestClassifier(
+                **rf_params,
+                bootstrap=True,
+                max_features='sqrt',
+                random_state=42,
+                n_jobs=-1
+            )
+
+            rf.fit(X_train_inner, y_train_inner)
+            preds = rf.predict(X_val_inner)
+
+            score = accuracy_score(y_val_inner, preds)
+            inner_scores.append(score)
+
+        avg_score = np.mean(inner_scores)
+
+        if avg_score > best_rf_score:
+            best_rf_score = avg_score
+            best_rf_params = rf_params
+
+    print(f"Best RF params: {best_rf_params}")
+
+    # ==========================================================
+    # 🔹 FINAL MODEL (OUTER TEST)
+    # ==========================================================
+    final_rf = RandomForestClassifier(
+        **best_rf_params,
+        bootstrap=True,
+        max_features='sqrt',
+        random_state=42,
+        n_jobs=-1
+    )
+
+    final_rf.fit(
+        X_train_outer_scaled[selected_features],
+        y_train_outer
+    )
+
+    final_preds = final_rf.predict(
+        X_test_outer_scaled[selected_features]
+    )
+
+    outer_score = accuracy_score(y_test_outer, final_preds)
+
+    outer_results.append({
+        'fold': outer_fold + 1,
+        'best_C': best_C,
+        'n_features': len(selected_features),
+        'best_rf_params': best_rf_params,
+        'test_accuracy': outer_score
+    })
+
+#%% ---------------- FINAL RESULTS ----------------
+
+results_df = pd.DataFrame(outer_results)
+
+print("\n=== Final Results ===")
+print(results_df)
+
+print(f"\nAverage Accuracy: "
+      f"{results_df['test_accuracy'].mean():.3f} "
+      f"+/- {results_df['test_accuracy'].std():.3f}")

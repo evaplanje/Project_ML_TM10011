@@ -6,61 +6,20 @@ from load_data import load_data, split_pd, explore_data, plot_feature_pairs, plo
 from preprocessing import apply_normalization, remove_zero_variance_features
 from sklearn.linear_model import LogisticRegression 
 from sklearn.pipeline import Pipeline
-from sklearn.pipeline import Pipeline
 
 
 #%%
-def remove_highly_correlated_features(df, correlation_threshold=0.99, show_details=True):
-    """
-    Remove features that are highly correlated with another feature.
 
-    Parameters
-    ----------
-    df : pd.DataFrame
-    correlation_threshold : float
-
-
-    Returns
-    -------
-    pd.DataFrame
-        DataFrame with correlated features removed
-    Index
-        Remaining feature names
-    """
-
-    corr_matrix = df.corr().abs()
-
-    upper = corr_matrix.where(
-        np.triu(np.ones(corr_matrix.shape), k=1).astype(bool)
-    )
-
-    corr_drop_cols = [
-        column for column in upper.columns
-        if any(upper[column] > correlation_threshold)
-    ]
-
-    df_reduced = df.drop(columns=corr_drop_cols)
-    kept_features = df_reduced.columns
-
-    if show_details:
-        print(f"Number of features before: {df.shape[1]}")
-        print(f"Dropped highly correlated features: {len(corr_drop_cols)}")
-        print(f"Remaining features: {len(kept_features)}")
-
-    return df_reduced, kept_features
-
-def lasso_feature_selection(
+def fs_lasso(
         df,
         y,
         C=0.1, 
         solver="saga",
         max_iter=10000,
         class_weight="balanced",
-        # Removed n_jobs from the parameters here
         show_details=False):
     """
     Perform feature selection using standard regularized logistic regression (LASSO).
-    Updated for scikit-learn >= 1.8 compatibility.
     """
     
     # Configure standard LogisticRegression without deprecated arguments
@@ -70,7 +29,6 @@ def lasso_feature_selection(
         solver=solver,
         max_iter=max_iter,
         class_weight=class_weight,
-        # <-- n_jobs has been completely removed
     )
     
     pipeline = Pipeline([("model", model)])
@@ -112,26 +70,6 @@ def lasso_feature_selection(
 
     return df_selected, selected_features
 
-def fs_lasso(df, y_train):
-    preproc_GIST_train_wo_high_corr, kept_features = remove_highly_correlated_features(
-        df, 
-        correlation_threshold=0.9, 
-        show_details=False
-    )
-    
-    GIST_train_lasso, final_kept_features = lasso_feature_selection(
-        preproc_GIST_train_wo_high_corr,
-        y_train,
-        C=0.04, 
-        solver="saga",
-        max_iter=10000,
-        class_weight="balanced",
-        # Make sure n_jobs=-1 is deleted here too!
-        show_details=False
-    )
-
-    return GIST_train_lasso, final_kept_features
-
 
 #%% DEZE PIPELINE kopieren
 
@@ -142,4 +80,4 @@ preproc_GIST_train, kept_features = remove_zero_variance_features(normalized_GIS
 
 #%%
 
-GIST_train_lasso, kept_features = fs_lasso(preproc_GIST_train.iloc[:106], y_train.iloc[:106])
+GIST_train_lasso, kept_features = fs_lasso(preproc_GIST_train.iloc[:106], y_train.iloc[:106], 0.05)
