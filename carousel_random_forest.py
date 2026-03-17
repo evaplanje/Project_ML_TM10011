@@ -6,30 +6,34 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score
 from sklearn.preprocessing import RobustScaler
 import itertools
-from fs_lasso import fs_lasso
-from fs_mRMR import fs_mrmr
-from fs_mutualinformation import fs_mutualinformation
 
 from load_data import load_data, split_pd
 from preprocessing import remove_zero_variance_features, remove_highly_correlated_features
 
+from fs_lasso import fs_lasso
+from fs_mRMR import fs_mrmr
+from fs_mutualinformation import fs_mutualinformation
+from fs_RFE import perform_rfe
+
 #%% ---------------- SETTINGS ----------------
 
 # Set your tuning grids here
-C_VALUES = [0.03, 0.04, 0.05]
+C_VALUES = [0.01, 0.02, 0.03]
 K_VALUES = [10, 15, 20]
 
 # Build a list of all Feature Selection configurations we want to test
 fs_configs = [{'method': 'lasso', 'param': c} for c in C_VALUES] + \
              [{'method': 'mrmr', 'param': k} for k in K_VALUES] + \
-             [{' method': ' mi', 'param': k} for k in K_VALUES]
+             [{'method': 'mi', 'param': k} for k in K_VALUES] + \
+             [{'method': 'rfe', 'param': k} for k in K_VALUES]
 
 rf_param_grid = {
-    'n_estimators': [100],
-    'max_depth': [5],
-    'min_samples_split': [2]
+    'n_estimators': [100, 200, 300],        
+    'max_depth': [3, 5, 7],       
+    'min_samples_split': [4, 6],     
+    'min_samples_leaf': [2, 3],      
+    'max_features': ['sqrt', 'log2']  
 }
-
 rf_keys, rf_values = zip(*rf_param_grid.items())
 rf_param_combinations = [dict(zip(rf_keys, v)) for v in itertools.product(*rf_values)]
 
@@ -45,8 +49,8 @@ y = y_train.values
 
 #%% ---------------- NESTED CV ----------------
 
-outer_cv = StratifiedKFold(n_splits=5, shuffle=True)
-inner_cv = StratifiedKFold(n_splits=3, shuffle=True)
+outer_cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+inner_cv = StratifiedKFold(n_splits=3, shuffle=True, random_state=42)
 
 outer_results = []
 
@@ -81,10 +85,12 @@ for outer_fold, (train_idx, test_idx) in enumerate(outer_cv.split(X, y)):
                 if fs_config['method'] == 'lasso':
                     _, selected_features = fs_lasso(X_train_inner, y_train_inner, C=fs_config['param'])
                 elif fs_config['method'] == 'mrmr':
-                    _, selected_features = fs_mrmr(X_train_inner, y_train_inner, K=fs_config['param'])
+                    _, selected_features = fs_mrmr(X_train_inner, y_train_inner, K=fs_config['param'], show_details=False)
                 elif fs_config['method'] == 'mi':
-                    selected_features = fs_mutualinformation(X_train_inner, y_train_inner, k=fs_config['param'])
-                
+                    selected_features, _ = fs_mutualinformation(X_train_inner, y_train_inner, k=fs_config['param'], showdetails=False)
+                elif fs_config['method'] == 'rfe':
+                    _, selected_features = perform_rfe(X_train_inner, y_train_inner, n_features_to_select=fs_config['param'])
+
                 selected_features = list(selected_features)
                 selected_features = [f for f in selected_features if f in X_train_inner.columns]
                 
@@ -94,7 +100,7 @@ for outer_fold, (train_idx, test_idx) in enumerate(outer_cv.split(X, y)):
                 X_train_inner_sel = X_train_inner[selected_features]
                 X_val_inner_sel = X_val_inner[selected_features]
                 
-                rf = RandomForestClassifier(**rf_params, bootstrap=True, max_features='sqrt', n_jobs=-1)
+                rf = RandomForestClassifier(**rf_params, bootstrap=True, n_jobs=-1, random_state=42)
                 rf.fit(X_train_inner_sel, y_train_inner)
                 
                 preds = rf.predict(X_val_inner_sel)
@@ -119,9 +125,11 @@ for outer_fold, (train_idx, test_idx) in enumerate(outer_cv.split(X, y)):
     if best_fs_config['method'] == 'lasso':
         _, final_selected_features = fs_lasso(X_train_outer_scaled, y_train_outer_series, C=best_fs_config['param'])
     elif best_fs_config['method'] == 'mrmr':
-        _, final_selected_features = fs_mrmr(X_train_outer_scaled, y_train_outer_series, K=best_fs_config['param'])
+        _, final_selected_features = fs_mrmr(X_train_outer_scaled, y_train_outer_series, K=best_fs_config['param'], show_details=False)
     elif best_fs_config['method'] == 'mi':
-        final_selected_features = fs_mutualinformation(X_train_outer_scaled, y_train_outer_series, k=best_fs_config['param'])
+        final_selected_features, _ = fs_mutualinformation(X_train_outer_scaled, y_train_outer_series, k=best_fs_config['param'], show_details=False)
+    elif fs_config['method'] == 'rfe':
+        _, selected_features = perform_rfe(X_train_outer_scaled, y_train_outer_series, n_features_to_select=fs_config['param'])
     
     final_selected_features = list(final_selected_features)
     final_selected_features = [f for f in final_selected_features if f in X_train_outer_scaled.columns]
@@ -130,7 +138,7 @@ for outer_fold, (train_idx, test_idx) in enumerate(outer_cv.split(X, y)):
         print("Warning: Winning FS method found 0 features on Outer Fold. Scoring as 0.")
         outer_score = 0
     else:
-        final_rf = RandomForestClassifier(**best_rf_params, bootstrap=True, max_features='sqrt', n_jobs=-1)
+        final_rf = RandomForestClassifier(**best_rf_params, bootstrap=True, n_jobs=-1, random_state=42)
         final_rf.fit(X_train_outer_scaled[final_selected_features], y_train_outer)
         
         final_preds = final_rf.predict(X_test_outer_scaled[final_selected_features])
