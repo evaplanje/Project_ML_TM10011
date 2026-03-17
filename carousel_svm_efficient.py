@@ -3,6 +3,7 @@ import numpy as np
 import pandas as pd
 import itertools
 import warnings
+import pickle
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import StratifiedKFold
 from sklearn.svm import SVC
@@ -12,7 +13,7 @@ from sklearn.exceptions import ConvergenceWarning
 from fs_lasso import fs_lasso
 from load_data import load_data, split_pd
 from preprocessing import remove_zero_variance_features, remove_highly_correlated_features
-from fs_statistical import fs_statistical
+#from fs_statistical import fs_statistical
 from sklearn.linear_model import LogisticRegressionCV
 from sklearn.pipeline import Pipeline
 from fs_RFE import perform_rfe
@@ -174,3 +175,27 @@ for model_name, group in results_df.groupby('model_name'):
 print("\nOpgeslagen AUC scores per model:")
 for model, scores in all_model_scores.items():
     print(f"{model}: {scores}")
+
+#%% ---------------- SAVE RESULTS ----------------
+results_df = pd.DataFrame(outer_results)
+
+# 1. CSV voor inspectie
+results_df.to_csv('nested_cv_results_SVM.csv', index=False)
+
+# 2. Pickle voor Wilcoxon
+all_model_scores = {}
+for _, row in results_df.iterrows():
+    model_name = row['model_name']
+    if model_name not in all_model_scores:
+        all_model_scores[model_name] = []
+    all_model_scores[model_name].append(row['test_auc'])
+
+with open('model_scores_SVM.pkl', 'wb') as f:
+    pickle.dump(all_model_scores, f)
+
+print("=== Opgeslagen ===")
+print(results_df)
+print(f"\nGemiddelde AUC: {results_df['test_auc'].mean():.3f} +/- {results_df['test_auc'].std():.3f}")
+print(f"\nScores per model:\n{all_model_scores}")
+
+#%%
