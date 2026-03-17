@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 from sklearn.model_selection import StratifiedKFold
 from xgboost import XGBClassifier
-from sklearn.metrics import accuracy_score
+from sklearn.metrics import roc_auc_score
 from sklearn.preprocessing import RobustScaler, LabelEncoder
 import itertools
 
@@ -36,6 +36,14 @@ xgb_param_grid = {
     'colsample_bytree': [0.6, 0.8, 1.0]  # Fraction of features used per tree
 }
 
+xgb_param_grid = {
+    'n_estimators': [100],     
+    'max_depth': [4],             
+    'learning_rate': [0.05],
+    'subsample': [0.8],      
+    'colsample_bytree': [0.8]
+}
+
 xgb_keys, xgb_values = zip(*xgb_param_grid.items())
 xgb_param_combinations = [dict(zip(xgb_keys, v)) for v in itertools.product(*xgb_values)]
 
@@ -49,8 +57,6 @@ preproc_GIST_train, _ = remove_highly_correlated_features(preproc_GIST_train, co
 X = preproc_GIST_train 
 y = y_train.values 
 
-# XGBoost REQUIRES class labels to start at 0 (e.g., 0, 1, 2). 
-# We use LabelEncoder just in case your classes are strings or e.g., 1 and 2.
 label_encoder = LabelEncoder()
 y = label_encoder.fit_transform(y)
 
@@ -113,7 +119,7 @@ for outer_fold, (train_idx, test_idx) in enumerate(outer_cv.split(X, y)):
                 
                 # 3. Evaluate
                 preds = xgb_model.predict(X_val_inner_sel)
-                inner_scores.append(accuracy_score(y_val_inner, preds))
+                inner_scores.append(roc_auc_score(y_val_inner, preds))
             
             if not inner_scores:
                 continue
@@ -153,7 +159,7 @@ for outer_fold, (train_idx, test_idx) in enumerate(outer_cv.split(X, y)):
         final_xgb.fit(X_train_outer_scaled[final_selected_features], y_train_outer)
         
         final_preds = final_xgb.predict(X_test_outer_scaled[final_selected_features])
-        outer_score = accuracy_score(y_test_outer, final_preds)
+        outer_score = roc_auc_score(y_test_outer, final_preds)
     
     outer_results.append({
         'fold': outer_fold + 1,
@@ -161,7 +167,7 @@ for outer_fold, (train_idx, test_idx) in enumerate(outer_cv.split(X, y)):
         'best_fs_param': best_fs_config['param'],
         'best_xgb_params': best_xgb_params,
         'n_features_selected': len(final_selected_features),
-        'test_accuracy': outer_score
+        'roc_auc_score': outer_score
     })
 
 #%% ---------------- FINAL RESULTS ----------------
@@ -170,4 +176,6 @@ print("\n=== Final Outer Loop Results ===")
 print(results_df)
 
 if not results_df.empty:
-    print(f"\nAverage Test Accuracy: {results_df['test_accuracy'].mean():.3f} +/- {results_df['test_accuracy'].std():.3f}")
+    print(f"\nAverage Test ROC AUC score: {results_df['roc_auc_score'].mean():.3f} +/- {results_df['roc_auc_score'].std():.3f}")
+
+#%% 

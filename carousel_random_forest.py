@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 from sklearn.model_selection import StratifiedKFold
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import accuracy_score
+from sklearn.metrics import roc_auc_score
 from sklearn.preprocessing import RobustScaler
 import itertools
 
@@ -31,8 +31,16 @@ rf_param_grid = {
     'n_estimators': [100, 200, 300],       
     'max_depth': [3, 5, 7],      
     'min_samples_split': [4, 6, 10],     
-    'min_samples_leaf': [2, 3, 5],       
+    'min_samples_leaf': [2, 5, 10],       
     'max_features': ['sqrt', 'log2', 0.3]  
+}
+
+rf_param_grid = {
+    'n_estimators': [200],       
+    'max_depth': [5],      
+    'min_samples_split': [6],     
+    'min_samples_leaf': [3],       
+    'max_features': ['sqrt']  
 }
 
 rf_keys, rf_values = zip(*rf_param_grid.items())
@@ -105,7 +113,7 @@ for outer_fold, (train_idx, test_idx) in enumerate(outer_cv.split(X, y)):
                 rf.fit(X_train_inner_sel, y_train_inner)
                 
                 preds = rf.predict(X_val_inner_sel)
-                inner_scores.append(accuracy_score(y_val_inner, preds))
+                inner_scores.append(roc_auc_score(y_val_inner, preds))
             
             if not inner_scores:
                 continue
@@ -143,7 +151,7 @@ for outer_fold, (train_idx, test_idx) in enumerate(outer_cv.split(X, y)):
         final_rf.fit(X_train_outer_scaled[final_selected_features], y_train_outer)
         
         final_preds = final_rf.predict(X_test_outer_scaled[final_selected_features])
-        outer_score = accuracy_score(y_test_outer, final_preds)
+        outer_score = roc_auc_score(y_test_outer, final_preds)
     
     outer_results.append({
         'fold': outer_fold + 1,
@@ -151,7 +159,7 @@ for outer_fold, (train_idx, test_idx) in enumerate(outer_cv.split(X, y)):
         'best_fs_param': best_fs_config['param'],
         'best_rf_params': best_rf_params,
         'n_features_selected': len(final_selected_features),
-        'test_accuracy': outer_score
+        'roc_auc_score': outer_score
     })
 
 #%% ---------------- FINAL RESULTS ----------------
@@ -160,4 +168,4 @@ print("\n=== Final Outer Loop Results ===")
 print(results_df)
 
 if not results_df.empty:
-    print(f"\nAverage Test Accuracy: {results_df['test_accuracy'].mean():.3f} +/- {results_df['test_accuracy'].std():.3f}")
+    print(f"\nAverage Test Roc AUC score: {results_df['roc_auc_score'].mean():.3f} +/- {results_df['roc_auc_score'].std():.3f}")
