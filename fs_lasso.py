@@ -25,7 +25,7 @@ def fs_lasso(
     
     # Configure standard LogisticRegression without deprecated arguments
     model = LogisticRegression(
-        l1_ratio=1,   
+        penalty='l1',   
         C=C,          
         solver=solver,
         max_iter=max_iter,
