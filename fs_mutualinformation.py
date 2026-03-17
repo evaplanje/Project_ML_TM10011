@@ -24,7 +24,6 @@ def fs_mutualinformation(df, labels, k, showdetails=True):
     if showdetails:
         print("\nTop features based on Mutual Information:\n")
         print(mi_df.head(k).to_string(index=False))
-        print(len(selected_features_mi))
 
     return selected_features_mi, mi_scores
 
@@ -37,6 +36,6 @@ preproc_GIST_train, kept_features = remove_zero_variance_features(normalized_GIS
 
 #%% Printen van de resultaten
 
-mi_results = fs_mutualinformation(preproc_GIST_train, y_train, 20, True)
+mi_results = fs_mutualinformation(preproc_GIST_train, y_train, 20, False)
 
 #%%
