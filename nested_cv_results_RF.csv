@@ -1,0 +1,7 @@
+fold,best_fs_method,best_fs_param,best_rf_params,n_features_selected,roc_auc_score,model_name
+1,mrmr,15.0,"{'n_estimators': 200, 'max_depth': 5, 'min_samples_split': 6, 'min_samples_leaf': 3, 'max_features': 'sqrt'}",15,0.7,
+2,mi,15.0,"{'n_estimators': 200, 'max_depth': 5, 'min_samples_split': 6, 'min_samples_leaf': 3, 'max_features': 'sqrt'}",15,0.6947368421052632,
+3,lasso,0.03,"{'n_estimators': 200, 'max_depth': 5, 'min_samples_split': 6, 'min_samples_leaf': 3, 'max_features': 'sqrt'}",22,0.6171052631578948,
+4,lasso,0.01,"{'n_estimators': 200, 'max_depth': 5, 'min_samples_split': 6, 'min_samples_leaf': 3, 'max_features': 'sqrt'}",15,0.618421052631579,
+5,mrmr,15.0,"{'n_estimators': 200, 'max_depth': 5, 'min_samples_split': 6, 'min_samples_leaf': 3, 'max_features': 'sqrt'}",15,0.5131578947368421,
+5,,15.0,"{'n_estimators': 200, 'max_depth': 5, 'min_samples_split': 6, 'min_samples_leaf': 3, 'max_features': 'sqrt'}",15,0.5131578947368421,mrmr_RF

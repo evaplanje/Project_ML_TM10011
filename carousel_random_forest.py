@@ -1,6 +1,8 @@
 #%%
 import numpy as np
 import pandas as pd
+import pickle
+
 from sklearn.model_selection import StratifiedKFold
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import roc_auc_score
@@ -169,3 +171,37 @@ print(results_df)
 
 if not results_df.empty:
     print(f"\nAverage Test Roc AUC score: {results_df['roc_auc_score'].mean():.3f} +/- {results_df['roc_auc_score'].std():.3f}")
+
+outer_results.append({
+    'fold':               outer_fold + 1,
+    'model_name':         f"{best_fs_config['method']}_RF",
+    'best_fs_param':      best_fs_config['param'],
+    'best_rf_params':     best_rf_params,
+    'n_features_selected': len(final_selected_features),
+    'roc_auc_score':      outer_score
+})
+
+
+#%% ---------------- SAVE RESULTS ----------------
+results_df = pd.DataFrame(outer_results)
+
+# 1. CSV voor inspectie
+results_df.to_csv('nested_cv_results_RF.csv', index=False)
+
+# 2. Pickle voor Wilcoxon
+all_model_scores = {}
+for _, row in results_df.iterrows():
+    model_name = row['model_name']
+    if model_name not in all_model_scores:
+        all_model_scores[model_name] = []
+    all_model_scores[model_name].append(row['roc_auc_score'])
+
+with open('model_scores_RF.pkl', 'wb') as f:
+    pickle.dump(all_model_scores, f)
+
+print("=== Opgeslagen ===")
+print(results_df)
+print(f"\nGemiddelde AUC: {results_df['roc_auc_score'].mean():.3f} +/- {results_df['roc_auc_score'].std():.3f}")
+print(f"\nScores per model:\n{all_model_scores}")
+
+#%%
