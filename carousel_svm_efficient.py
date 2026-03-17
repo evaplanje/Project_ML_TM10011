@@ -19,18 +19,19 @@ from fs_statistical import fs_statistical
 from fs_RFE import perform_rfe
 from sklearn.svm import SVC
 from sklearn.pipeline import make_pipeline
+from fs_mutualinformation import fs_mutualinformation
 
 
 # Suppress the specific scikit-learn warnings to keep the console clean
-warnings.filterwarnings("ignore", message="l1_ratio parameter is only used when penalty is 'elasticnet'")
-warnings.filterwarnings("ignore", category=ConvergenceWarning)
+# warnings.filterwarnings("ignore", message="l1_ratio parameter is only used when penalty is 'elasticnet'")
+# warnings.filterwarnings("ignore", category=ConvergenceWarning)
 
 
 #%% Setup Feature Selection and Hyperparameters
 fs_methods = {
     'lasso': fs_lasso,
-    'statistical': fs_statistical,
-    'rfe': perform_rfe
+    'rfe': perform_rfe,
+    'mutual_information': fs_mutualinformation
 }
 
 SVM_param_grid = {
