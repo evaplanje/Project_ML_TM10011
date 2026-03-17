@@ -8,7 +8,7 @@ from sklearn.preprocessing import RobustScaler
 import itertools
 from fs_lasso import fs_lasso
 from load_data import load_data, split_pd, explore_data, plot_feature_pairs, plot_heatmap
-from preprocessing import remove_highly_correlated_features, remove_zero_variance_features
+from preprocessing import remove_zero_variance_features, remove_highly_correlated_features
 from sklearn.linear_model import LogisticRegressionCV
 from sklearn.pipeline import Pipeline
 # from fs_statistical import fs_statistical
