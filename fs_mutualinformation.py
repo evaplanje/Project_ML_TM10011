@@ -1,3 +1,4 @@
+#%%
 import pandas as pd
 import os
 import numpy as np
@@ -36,6 +37,6 @@ preproc_GIST_train, kept_features = remove_zero_variance_features(normalized_GIS
 
 #%% Printen van de resultaten
 
-mi_results = fs_mutualinformation(preproc_GIST_train, y_train, 20, False)
+mi_results, _ = fs_mutualinformation(preproc_GIST_train, y_train, 20, False)
 
 #%%
