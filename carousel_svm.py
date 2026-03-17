@@ -16,7 +16,7 @@ from fs_RFE import perform_rfe
 from sklearn.svm import SVC
 from sklearn.pipeline import make_pipeline
 
-
+#
 
 #%%
 #dit stuk heb ik hetzefde gehouden als in carousel_random_forest.py
