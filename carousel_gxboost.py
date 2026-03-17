@@ -52,7 +52,6 @@ xgb_param_combinations = [dict(zip(xgb_keys, v)) for v in itertools.product(*xgb
 GIST_data = load_data('GIST_radiomicFeatures.csv')
 GIST_train, GIST_test, y_train, y_test = split_pd(GIST_data, False)
 preproc_GIST_train, _ = remove_zero_variance_features(GIST_train, show_details=False)
-preproc_GIST_train, _ = remove_highly_correlated_features(preproc_GIST_train, correlation_threshold=0.90, show_details=False)
 
 X = preproc_GIST_train 
 y = y_train.values 
@@ -93,7 +92,15 @@ for outer_fold, (train_idx, test_idx) in enumerate(outer_cv.split(X, y)):
 
                 y_train_inner = pd.Series(y_train_outer[inner_train_idx], index=X_train_inner.index)
                 y_val_inner = pd.Series(y_train_outer[inner_val_idx], index=X_val_inner.index)
-                
+
+                X_train_inner, kept_features = remove_highly_correlated_features(
+                    X_train_inner,
+                    correlation_threshold=0.95,
+                    show_details=False
+                )
+
+                X_val_inner = X_val_inner[kept_features]
+
                 # 1. Apply Feature Selection
                 if fs_config['method'] == 'lasso':
                     _, selected_features = fs_lasso(X_train_inner, y_train_inner, C=fs_config['param'])
@@ -134,33 +141,45 @@ for outer_fold, (train_idx, test_idx) in enumerate(outer_cv.split(X, y)):
     print(f"Best Inner Tuning - FS: {best_fs_config['method']} (param: {best_fs_config['param']}), XGB: {best_xgb_params}")
 
     # --- OUTER LOOP: Evaluate the Best Model Pipeline ---
-    y_train_outer_series = pd.Series(y_train_outer, index=X_train_outer_scaled.index)
     
-    # Re-apply the winning feature selection config
+        # --- Correlation filtering ---
+    X_train_outer_corr, kept_features_outer = remove_highly_correlated_features(
+        X_train_outer_scaled,
+        correlation_threshold=0.95,
+        show_details=False
+    )
+
+    X_test_outer_corr = X_test_outer_scaled[kept_features_outer]
+
+    y_train_outer_series = pd.Series(y_train_outer, index=X_train_outer_corr.index)
+
+    # --- Feature Selection ---
     if best_fs_config['method'] == 'lasso':
-        _, final_selected_features = fs_lasso(X_train_outer_scaled, y_train_outer_series, C=best_fs_config['param'])
+        _, final_selected_features = fs_lasso(X_train_outer_corr, y_train_outer_series, C=best_fs_config['param'])
     elif best_fs_config['method'] == 'mrmr':
-        _, final_selected_features = fs_mrmr(X_train_outer_scaled, y_train_outer_series, K=best_fs_config['param'], show_details=False)
+        _, final_selected_features = fs_mrmr(X_train_outer_corr, y_train_outer_series, K=best_fs_config['param'], show_details=False)
     elif best_fs_config['method'] == 'mi':
-        final_selected_features, _ = fs_mutualinformation(X_train_outer_scaled, y_train_outer_series, k=best_fs_config['param'], showdetails=False)
+        final_selected_features, _ = fs_mutualinformation(X_train_outer_corr, y_train_outer_series, k=best_fs_config['param'], showdetails=False)
     elif best_fs_config['method'] == 'rfe':
-        # FIXED BUG: using best_fs_config instead of fs_config, and final_selected_features
-        _, final_selected_features = perform_rfe(X_train_outer_scaled, y_train_outer_series, n_features_to_select=best_fs_config['param'])
-    
+        _, final_selected_features = perform_rfe(X_train_outer_corr, y_train_outer_series, n_features_to_select=best_fs_config['param'])
+
     final_selected_features = list(final_selected_features)
-    final_selected_features = [f for f in final_selected_features if f in X_train_outer_scaled.columns]
-    
+    final_selected_features = [f for f in final_selected_features if f in X_train_outer_corr.columns]
+
     if not final_selected_features:
-        print("Warning: Winning FS method found 0 features on Outer Fold. Scoring as 0.")
         outer_score = 0
     else:
-        # Train final XGBoost
-        final_xgb = XGBClassifier(**best_xgb_params, n_jobs=-1, random_state=42, use_label_encoder=False, eval_metric='logloss')
-        final_xgb.fit(X_train_outer_scaled[final_selected_features], y_train_outer)
-        
-        final_preds = final_xgb.predict(X_test_outer_scaled[final_selected_features])
-        outer_score = roc_auc_score(y_test_outer, final_preds)
-    
+        final_xgb = XGBClassifier(
+            **best_xgb_params,
+            n_jobs=-1,
+            random_state=42,
+            eval_metric='logloss'
+        )
+
+        final_xgb.fit(X_train_outer_corr[final_selected_features], y_train_outer)
+
+        final_probs = final_xgb.predict_proba(X_test_outer_corr[final_selected_features])[:, 1]
+        outer_score = roc_auc_score(y_test_outer, final_probs) 
     outer_results.append({
         'fold': outer_fold + 1,
         'best_fs_method': best_fs_config['method'],
