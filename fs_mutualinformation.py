@@ -7,7 +7,7 @@ from sklearn.feature_selection import mutual_info_classif
 
 #%% Mutual information
 
-def fs_mutualinformation(df, labels, k, showdetails=True):
+def fs_mutualinformation(df, labels, k=20, showdetails=True):
     mi_scores = mutual_info_classif(
         df, 
         labels, 
