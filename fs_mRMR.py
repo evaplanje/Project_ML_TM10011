@@ -13,7 +13,7 @@ from preprocessing import remove_zero_variance_features
 import pandas as pd
 from mrmr import mrmr_classif
 
-def fs_mrmr(X_train, y_train, K=10, show_details=True):
+def fs_mrmr(X_train, y_train, K=10, show_details=False):
     """
     Voert mRMR feature selectie uit op de trainingsset en past
     dezelfde selectie toe op de testset.
@@ -58,16 +58,16 @@ def fs_mrmr(X_train, y_train, K=10, show_details=True):
     return selected_features, X_train_selected
 
 
-GIST_data = load_data('GIST_radiomicFeatures.csv')
-GIST_train, GIST_test, y_train, y_test = split_pd(GIST_data, False)
-normalized_GIST_train, scaler = apply_normalization(GIST_train)
-preproc_GIST_train, kept_features = remove_zero_variance_features(normalized_GIST_train, show_details=False)
+# GIST_data = load_data('GIST_radiomicFeatures.csv')
+# GIST_train, GIST_test, y_train, y_test = split_pd(GIST_data, False)
+# normalized_GIST_train, scaler = apply_normalization(GIST_train)
+# preproc_GIST_train, kept_features = remove_zero_variance_features(normalized_GIST_train, show_details=False)
 
 
-selected_features_mrmr, X_train_mrmr = fs_mrmr(
-    X_train=preproc_GIST_train,
-    y_train=y_train,
-    K=10,
-    show_details=True
-)
+# selected_features_mrmr, X_train_mrmr = fs_mrmr(
+#     X_train=preproc_GIST_train,
+#     y_train=y_train,
+#     K=10,
+#     show_details=True
+# )
 #%%
