@@ -2,9 +2,9 @@
 import numpy as np
 import pandas as pd
 from sklearn.model_selection import StratifiedKFold
-from sklearn.ensemble import RandomForestClassifier
+from xgboost import XGBClassifier
 from sklearn.metrics import accuracy_score
-from sklearn.preprocessing import RobustScaler
+from sklearn.preprocessing import RobustScaler, LabelEncoder
 import itertools
 
 from load_data import load_data, split_pd
@@ -17,26 +17,27 @@ from fs_RFE import perform_rfe
 
 #%% ---------------- SETTINGS ----------------
 
-# Set your tuning grids here
+# Set your feature selection tuning grids here
 C_VALUES = [0.01, 0.02, 0.03]
 K_VALUES = [10, 15, 20]
 
-# Build a list of all Feature Selection configurations we want to test
+# Build a list of all Feature Selection configurations to test
 fs_configs = [{'method': 'lasso', 'param': c} for c in C_VALUES] + \
              [{'method': 'mrmr', 'param': k} for k in K_VALUES] + \
              [{'method': 'mi', 'param': k} for k in K_VALUES] + \
              [{'method': 'rfe', 'param': k} for k in K_VALUES]
 
-rf_param_grid = {
-    'n_estimators': [100, 200, 300],       
-    'max_depth': [3, 5, 7],      
-    'min_samples_split': [4, 6, 10],     
-    'min_samples_leaf': [2, 3, 5],       
-    'max_features': ['sqrt', 'log2', 0.3]  
+# XGBoost specific hyperparameter grid (tailored for small datasets)
+xgb_param_grid = {
+    'n_estimators': [50, 100, 200],      # Number of trees
+    'max_depth': [3, 4, 5],              # Keep trees shallow to prevent overfitting
+    'learning_rate': [0.01, 0.05, 0.1],  # Step size shrinkage
+    'subsample': [0.6, 0.8, 1.0],        # Fraction of samples used per tree
+    'colsample_bytree': [0.6, 0.8, 1.0]  # Fraction of features used per tree
 }
 
-rf_keys, rf_values = zip(*rf_param_grid.items())
-rf_param_combinations = [dict(zip(rf_keys, v)) for v in itertools.product(*rf_values)]
+xgb_keys, xgb_values = zip(*xgb_param_grid.items())
+xgb_param_combinations = [dict(zip(xgb_keys, v)) for v in itertools.product(*xgb_values)]
 
 #%% ---------------- LOAD & PREPROCESS ----------------
 
@@ -47,6 +48,11 @@ preproc_GIST_train, _ = remove_highly_correlated_features(preproc_GIST_train, co
 
 X = preproc_GIST_train 
 y = y_train.values 
+
+# XGBoost REQUIRES class labels to start at 0 (e.g., 0, 1, 2). 
+# We use LabelEncoder just in case your classes are strings or e.g., 1 and 2.
+label_encoder = LabelEncoder()
+y = label_encoder.fit_transform(y)
 
 #%% ---------------- NESTED CV ----------------
 
@@ -67,11 +73,11 @@ for outer_fold, (train_idx, test_idx) in enumerate(outer_cv.split(X, y)):
 
     best_inner_score = -1
     best_fs_config = None
-    best_rf_params = None
+    best_xgb_params = None
 
     # --- INNER LOOP: Hyperparameter Tuning ---
     for fs_config in fs_configs:
-        for rf_params in rf_param_combinations:
+        for xgb_params in xgb_param_combinations:
             
             inner_scores = []
             
@@ -82,7 +88,7 @@ for outer_fold, (train_idx, test_idx) in enumerate(outer_cv.split(X, y)):
                 y_train_inner = pd.Series(y_train_outer[inner_train_idx], index=X_train_inner.index)
                 y_val_inner = pd.Series(y_train_outer[inner_val_idx], index=X_val_inner.index)
                 
-                # 1. Apply Feature Selection based on the current config
+                # 1. Apply Feature Selection
                 if fs_config['method'] == 'lasso':
                     _, selected_features = fs_lasso(X_train_inner, y_train_inner, C=fs_config['param'])
                 elif fs_config['method'] == 'mrmr':
@@ -101,10 +107,12 @@ for outer_fold, (train_idx, test_idx) in enumerate(outer_cv.split(X, y)):
                 X_train_inner_sel = X_train_inner[selected_features]
                 X_val_inner_sel = X_val_inner[selected_features]
                 
-                rf = RandomForestClassifier(**rf_params, bootstrap=True, n_jobs=-1, random_state=42)
-                rf.fit(X_train_inner_sel, y_train_inner)
+                # 2. Train XGBoost
+                xgb_model = XGBClassifier(**xgb_params, n_jobs=-1, random_state=42, use_label_encoder=False, eval_metric='logloss')
+                xgb_model.fit(X_train_inner_sel, y_train_inner)
                 
-                preds = rf.predict(X_val_inner_sel)
+                # 3. Evaluate
+                preds = xgb_model.predict(X_val_inner_sel)
                 inner_scores.append(accuracy_score(y_val_inner, preds))
             
             if not inner_scores:
@@ -115,9 +123,9 @@ for outer_fold, (train_idx, test_idx) in enumerate(outer_cv.split(X, y)):
             if avg_inner_score > best_inner_score:
                 best_inner_score = avg_inner_score
                 best_fs_config = fs_config
-                best_rf_params = rf_params
+                best_xgb_params = xgb_params
 
-    print(f"Best Inner Tuning - FS: {best_fs_config['method']} (param: {best_fs_config['param']}), RF: {best_rf_params}")
+    print(f"Best Inner Tuning - FS: {best_fs_config['method']} (param: {best_fs_config['param']}), XGB: {best_xgb_params}")
 
     # --- OUTER LOOP: Evaluate the Best Model Pipeline ---
     y_train_outer_series = pd.Series(y_train_outer, index=X_train_outer_scaled.index)
@@ -129,8 +137,9 @@ for outer_fold, (train_idx, test_idx) in enumerate(outer_cv.split(X, y)):
         _, final_selected_features = fs_mrmr(X_train_outer_scaled, y_train_outer_series, K=best_fs_config['param'], show_details=False)
     elif best_fs_config['method'] == 'mi':
         final_selected_features, _ = fs_mutualinformation(X_train_outer_scaled, y_train_outer_series, k=best_fs_config['param'], showdetails=False)
-    elif fs_config['method'] == 'rfe':
-        _, selected_features = perform_rfe(X_train_outer_scaled, y_train_outer_series, n_features_to_select=fs_config['param'])
+    elif best_fs_config['method'] == 'rfe':
+        # FIXED BUG: using best_fs_config instead of fs_config, and final_selected_features
+        _, final_selected_features = perform_rfe(X_train_outer_scaled, y_train_outer_series, n_features_to_select=best_fs_config['param'])
     
     final_selected_features = list(final_selected_features)
     final_selected_features = [f for f in final_selected_features if f in X_train_outer_scaled.columns]
@@ -139,17 +148,18 @@ for outer_fold, (train_idx, test_idx) in enumerate(outer_cv.split(X, y)):
         print("Warning: Winning FS method found 0 features on Outer Fold. Scoring as 0.")
         outer_score = 0
     else:
-        final_rf = RandomForestClassifier(**best_rf_params, bootstrap=True, n_jobs=-1, random_state=42)
-        final_rf.fit(X_train_outer_scaled[final_selected_features], y_train_outer)
+        # Train final XGBoost
+        final_xgb = XGBClassifier(**best_xgb_params, n_jobs=-1, random_state=42, use_label_encoder=False, eval_metric='logloss')
+        final_xgb.fit(X_train_outer_scaled[final_selected_features], y_train_outer)
         
-        final_preds = final_rf.predict(X_test_outer_scaled[final_selected_features])
+        final_preds = final_xgb.predict(X_test_outer_scaled[final_selected_features])
         outer_score = accuracy_score(y_test_outer, final_preds)
     
     outer_results.append({
         'fold': outer_fold + 1,
         'best_fs_method': best_fs_config['method'],
         'best_fs_param': best_fs_config['param'],
-        'best_rf_params': best_rf_params,
+        'best_xgb_params': best_xgb_params,
         'n_features_selected': len(final_selected_features),
         'test_accuracy': outer_score
     })
