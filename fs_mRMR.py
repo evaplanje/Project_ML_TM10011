@@ -13,7 +13,7 @@ from preprocessing import remove_zero_variance_features
 import pandas as pd
 from mrmr import mrmr_classif
 
-def mrmr_feature_selection_train_test(X_train, y_train, K=10, show_details=True):
+def fs_mrmr(X_train, y_train, K=10, show_details=True):
     """
     Voert mRMR feature selectie uit op de trainingsset en past
     dezelfde selectie toe op de testset.
@@ -64,7 +64,7 @@ normalized_GIST_train, scaler = apply_normalization(GIST_train)
 preproc_GIST_train, kept_features = remove_zero_variance_features(normalized_GIST_train, show_details=False)
 
 
-selected_features_mrmr, X_train_mrmr = mrmr_feature_selection_train_test(
+selected_features_mrmr, X_train_mrmr = fs_mrmr(
     X_train=preproc_GIST_train,
     y_train=y_train,
     K=10,
