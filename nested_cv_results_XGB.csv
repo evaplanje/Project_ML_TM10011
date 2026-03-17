@@ -1,0 +1,7 @@
+fold,best_fs_method,best_fs_param,best_xgb_params,n_features_selected,roc_auc_score,model_name,best_rf_params
+1,mrmr,15,"{'n_estimators': 100, 'max_depth': 4, 'learning_rate': 0.05, 'subsample': 0.8, 'colsample_bytree': 0.8}",15,0.6749999999999999,,
+2,mi,20,"{'n_estimators': 100, 'max_depth': 4, 'learning_rate': 0.05, 'subsample': 0.8, 'colsample_bytree': 0.8}",20,0.6157894736842106,,
+3,mrmr,15,"{'n_estimators': 100, 'max_depth': 4, 'learning_rate': 0.05, 'subsample': 0.8, 'colsample_bytree': 0.8}",15,0.6144736842105263,,
+4,mi,20,"{'n_estimators': 100, 'max_depth': 4, 'learning_rate': 0.05, 'subsample': 0.8, 'colsample_bytree': 0.8}",20,0.5131578947368421,,
+5,mrmr,10,"{'n_estimators': 100, 'max_depth': 4, 'learning_rate': 0.05, 'subsample': 0.8, 'colsample_bytree': 0.8}",10,0.5644736842105263,,
+5,,10,,10,0.5644736842105263,mrmr_XGBoost,"{'n_estimators': 100, 'max_depth': 4, 'learning_rate': 0.05, 'subsample': 0.8, 'colsample_bytree': 0.8}"

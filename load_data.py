@@ -162,3 +162,5 @@ GIST_train, GIST_test, y_train, y_test = split_pd(GIST_data, False)
 # explore_data(GIST_data)
 # plot_feature_pairs(GIST_data)
 # plot_heatmap(GIST_data)
+
+#%%

@@ -2,10 +2,11 @@
 import pandas as pd
 import numpy as np
 import itertools
+import pickle
 from sklearn.model_selection import StratifiedKFold
 from sklearn.preprocessing import RobustScaler
-from sklearn.metrics import accuracy_score
 from sklearn.ensemble import BaggingClassifier
+from sklearn.metrics import roc_auc_score
 # Let op: zorg dat je je eigen functies (zoals load_data, fs_lasso, etc.) hierboven importeert
 
 #%%
@@ -86,7 +87,7 @@ for outer_fold, (train_idx, test_idx) in enumerate(outer_cv.split(X, y)):
                 
                 # 4. Evalueer
                 preds = bagging_clf.predict(X_val_inner_sel)
-                score = accuracy_score(y_val_inner, preds)
+                score = roc_auc_score(y_val_inner, preds)
                 inner_scores.append(score)
             
             # Gemiddelde score over de inner folds
@@ -111,18 +112,52 @@ for outer_fold, (train_idx, test_idx) in enumerate(outer_cv.split(X, y)):
     
     # Test op de achtergehouden outer test set
     final_preds = final_bagging.predict(X_test_outer_scaled[final_selected_features])
-    outer_score = accuracy_score(y_test_outer, final_preds)
+    outer_score = roc_auc_score(y_test_outer, final_preds)
     
     outer_results.append({
         'fold': outer_fold + 1,
         'best_fs_method': best_fs_method,
         'best_bagging_params': best_bagging_params,
         'n_features_selected': len(final_selected_features),
-        'test_accuracy': outer_score
+        'roc_auc_score': outer_score
     })
 
 # --- Final Results ---
 results_df = pd.DataFrame(outer_results)
 print("\n=== Final Outer Loop Results ===")
 print(results_df)
-print(f"\nAverage Test Accuracy: {results_df['test_accuracy'].mean():.3f} +/- {results_df['test_accuracy'].std():.3f}")
+print(f"\nAverage Test Accuracy: {results_df[''roc_auc_score''].mean():.3f} +/- {results_df[''roc_auc_score''].std():.3f}")
+
+outer_results.append({
+    'fold':               outer_fold + 1,
+    'model_name':         f"{best_fs_method['method']}_Bag",
+    'best_fs_param':      best_fs_method['param'],
+    'best_rf_params':     best_bagging_params,
+    'n_features_selected': len(final_selected_features),
+    'roc_auc_score':      outer_score
+})
+
+
+#%% ---------------- SAVE RESULTS ----------------
+results_df = pd.DataFrame(outer_results)
+
+# 1. CSV voor inspectie
+results_df.to_csv('nested_cv_results_RF.csv', index=False)
+
+# 2. Pickle voor Wilcoxon
+all_model_scores = {}
+for _, row in results_df.iterrows():
+    model_name = row['model_name']
+    if model_name not in all_model_scores:
+        all_model_scores[model_name] = []
+    all_model_scores[model_name].append(row['roc_auc_score'])
+
+with open('model_scores_RF.pkl', 'wb') as f:
+    pickle.dump(all_model_scores, f)
+
+print("=== Opgeslagen ===")
+print(results_df)
+print(f"\nGemiddelde AUC: {results_df['roc_auc_score'].mean():.3f} +/- {results_df['roc_auc_score'].std():.3f}")
+print(f"\nScores per model:\n{all_model_scores}")
+
+#%%
