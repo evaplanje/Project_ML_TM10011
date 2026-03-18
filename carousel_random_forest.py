@@ -24,9 +24,9 @@ K_VALUES = [10, 15, 20]
 
 fs_configs = (
     [{'method': 'lasso', 'param': c} for c in C_VALUES] +
-    [{'method': 'mrmr', 'param': k} for k in K_VALUES] +
-    [{'method': 'mi', 'param': k} for k in K_VALUES] +
-    [{'method': 'rfe', 'param': k} for k in K_VALUES]
+    [{'method': 'mrmr', 'param': k} for k in K_VALUES]# +
+    # [{'method': 'mi', 'param': k} for k in K_VALUES] +
+    # [{'method': 'rfe', 'param': k} for k in K_VALUES]
 )
 
 rf_param_grid = {
@@ -198,15 +198,14 @@ print("\n=== Results ===")
 print(results_df)
 
 if not results_df.empty:
-    print(f"\nAverage Test Roc AUC score: {results_df['roc_auc_score'].mean():.3f} +/- {results_df['roc_auc_score'].std():.3f}")
-
+    print(f"\nAverage Test Roc AUC score: {results_df['roc_auc'].mean():.3f} +/- {results_df['roc_auc'].std():.3f}")
 outer_results.append({
     'fold':               outer_fold + 1,
     'model_name':         f"{best_fs_config['method']}_RF",
     'best_fs_param':      best_fs_config['param'],
     'best_rf_params':     best_rf_params,
     'n_features_selected': len(final_selected_features),
-    'roc_auc_score':      outer_score
+    'roc_auc_score':      roc_auc_score
 })
 
 
