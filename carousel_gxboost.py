@@ -22,6 +22,9 @@ from fs_RFE import perform_rfe
 C_VALUES = [0.01, 0.02, 0.03]
 K_VALUES = [10, 15, 20]
 
+C_VALUES = [0.02]
+K_VALUES = [15]
+
 # Build a list of all Feature Selection configurations to test
 fs_configs = [{'method': 'lasso', 'param': c} for c in C_VALUES] + \
              [{'method': 'mrmr', 'param': k} for k in K_VALUES] + \
@@ -192,7 +195,8 @@ for outer_fold, (train_idx, test_idx) in enumerate(outer_cv.split(X, y)):
 
 #%% 
 
-#%% ---------------- FINAL RESULTS ----------------
+#---------------- FINAL RESULTS ----------------
+
 results_df = pd.DataFrame(outer_results)
 print("\n=== Final Outer Loop Results ===")
 print(results_df)
@@ -210,7 +214,7 @@ outer_results.append({
 })
 
 
-#%% ---------------- SAVE RESULTS ----------------
+# ---------------- SAVE RESULTS ----------------
 results_df = pd.DataFrame(outer_results)
 
 # 1. CSV voor inspectie
