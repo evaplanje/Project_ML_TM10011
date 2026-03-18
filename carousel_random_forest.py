@@ -21,6 +21,8 @@ from fs_RFE import perform_rfe
 
 C_VALUES = [0.01, 0.02, 0.03]
 K_VALUES = [10, 15, 20]
+C_VALUES = [0.02]
+K_VALUES = [15]
 
 fs_configs = (
     [{'method': 'lasso', 'param': c} for c in C_VALUES] +
@@ -204,31 +206,50 @@ outer_results.append({
     'model_name':         f"{best_fs_config['method']}_RF",
     'best_fs_param':      best_fs_config['param'],
     'best_rf_params':     best_rf_params,
-    'n_features_selected': len(final_selected_features),
-    'roc_auc_score':      roc_auc_score
+    'n_features_selected': len(final_features),
+    'roc_auc_score':      outer_score
 })
 
-
 #%% ---------------- SAVE RESULTS ----------------
+
 results_df = pd.DataFrame(outer_results)
 
-# 1. CSV voor inspectie
+# 1. CSV
 results_df.to_csv('nested_cv_results_RF.csv', index=False)
 
-# 2. Pickle voor Wilcoxon
+# 2. Pickle for Wilcoxon
 all_model_scores = {}
+
 for _, row in results_df.iterrows():
+
+    # Skip rows that don't have model_name (first part of your results)
+    if pd.isna(row.get('model_name')):
+        continue
+
     model_name = row['model_name']
+    score = row['roc_auc_score']
+
+    # Skip invalid entries (VERY important because you stored the function!)
+    if not isinstance(score, (int, float)):
+        continue
+
     if model_name not in all_model_scores:
         all_model_scores[model_name] = []
-    all_model_scores[model_name].append(row['roc_auc_score'])
 
+    all_model_scores[model_name].append(score)
+
+# Save pickle
 with open('model_scores_RF.pkl', 'wb') as f:
     pickle.dump(all_model_scores, f)
 
 print("=== Opgeslagen ===")
 print(results_df)
-print(f"\nGemiddelde AUC: {results_df['roc_auc_score'].mean():.3f} +/- {results_df['roc_auc_score'].std():.3f}")
-print(f"\nScores per model:\n{all_model_scores}")
 
-#%%
+# Only use valid numeric scores
+valid_scores = results_df['roc_auc_score'].dropna()
+valid_scores = valid_scores[valid_scores.apply(lambda x: isinstance(x, (int, float)))]
+
+if not valid_scores.empty:
+    print(f"\nGemiddelde AUC: {valid_scores.mean():.3f} +/- {valid_scores.std():.3f}")
+
+print(f"\nScores per model:\n{all_model_scores}")
