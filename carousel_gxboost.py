@@ -65,8 +65,8 @@ y = label_encoder.fit_transform(y)
 
 #%% ---------------- NESTED CV ----------------
 
-outer_cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
-inner_cv = StratifiedKFold(n_splits=3, shuffle=True, random_state=42)
+outer_cv = StratifiedKFold(n_splits=5, shuffle=True)
+inner_cv = StratifiedKFold(n_splits=3, shuffle=True)
 
 outer_results = []
 
@@ -125,7 +125,7 @@ for outer_fold, (train_idx, test_idx) in enumerate(outer_cv.split(X, y)):
                 X_val_inner_sel = X_val_inner[selected_features]
                 
                 # 2. Train XGBoost
-                xgb_model = XGBClassifier(**xgb_params, n_jobs=-1, random_state=42, use_label_encoder=False, eval_metric='logloss')
+                xgb_model = XGBClassifier(**xgb_params, n_jobs=-1, use_label_encoder=False, eval_metric='logloss')
                 xgb_model.fit(X_train_inner_sel, y_train_inner)
                 
                 # 3. Evaluate
@@ -176,7 +176,6 @@ for outer_fold, (train_idx, test_idx) in enumerate(outer_cv.split(X, y)):
         final_xgb = XGBClassifier(
             **best_xgb_params,
             n_jobs=-1,
-            random_state=42,
             eval_metric='logloss'
         )
 
@@ -186,54 +185,53 @@ for outer_fold, (train_idx, test_idx) in enumerate(outer_cv.split(X, y)):
         outer_score = roc_auc_score(y_test_outer, final_probs) 
     outer_results.append({
         'fold': outer_fold + 1,
+        'model_name': f"{best_fs_config['method']}_XBG",
         'best_fs_method': best_fs_config['method'],
         'best_fs_param': best_fs_config['param'],
         'best_xgb_params': best_xgb_params,
         'n_features_selected': len(final_selected_features),
         'roc_auc_score': outer_score
     })
-
-#%% 
+ 
 
 #---------------- FINAL RESULTS ----------------
 
 results_df = pd.DataFrame(outer_results)
-print("\n=== Final Outer Loop Results ===")
-print(results_df)
+
+print("\n" + "="*20 + " RESULTS " + "="*20)
+print(results_df.to_string(index=False))
+
+# Calculate Valid Scores
+valid_scores = results_df['roc_auc_score'].dropna()
+valid_scores = valid_scores[valid_scores.apply(lambda x: isinstance(x, (int, float)))]
+
 
 if not results_df.empty:
     print(f"\nAverage Test Roc AUC score: {results_df['roc_auc_score'].mean():.3f} +/- {results_df['roc_auc_score'].std():.3f}")
 
-outer_results.append({
-    'fold':               outer_fold + 1,
-    'model_name':         f"{best_fs_config['method']}_XGBoost",
-    'best_fs_param':      best_fs_config['param'],
-    'best_rf_params':     best_xgb_params,
-    'n_features_selected': len(final_selected_features),
-    'roc_auc_score':      outer_score
-})
-
-
-# ---------------- SAVE RESULTS ----------------
-results_df = pd.DataFrame(outer_results)
-
-# 1. CSV voor inspectie
+# 1. Save to CSV
 results_df.to_csv('nested_cv_results_XGB.csv', index=False)
 
-# 2. Pickle voor Wilcoxon
+# 2. Extract scores for Wilcoxon testing and save to Pickle
 all_model_scores = {}
+
 for _, row in results_df.iterrows():
+    if pd.isna(row.get('model_name')):
+        continue
+
     model_name = row['model_name']
+    score = row['roc_auc_score']
+
+    if not isinstance(score, (int, float)):
+        continue
+
     if model_name not in all_model_scores:
         all_model_scores[model_name] = []
-    all_model_scores[model_name].append(row['roc_auc_score'])
+    
+    all_model_scores[model_name].append(score)
 
 with open('model_scores_XGB.pkl', 'wb') as f:
     pickle.dump(all_model_scores, f)
 
-print("=== Opgeslagen ===")
-print(results_df)
-print(f"\nGemiddelde AUC: {results_df['roc_auc_score'].mean():.3f} +/- {results_df['roc_auc_score'].std():.3f}")
-print(f"\nScores per model:\n{all_model_scores}")
-
-#%%
+print(f"\nScores per model (Saved for Wilcoxon):\n{all_model_scores}")
+print("\n=== Processing Complete ===")

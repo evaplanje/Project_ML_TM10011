@@ -63,8 +63,8 @@ y = y_train.values
 #%% ---------------- NESTED CROSS-VALIDATION ----------------
 
 # Outer loop evaluates model performance; Inner loop tunes hyperparameters
-outer_cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
-inner_cv = StratifiedKFold(n_splits=3, shuffle=True, random_state=42)
+outer_cv = StratifiedKFold(n_splits=5, shuffle=True)
+inner_cv = StratifiedKFold(n_splits=3, shuffle=True)
 
 outer_results = []
 
@@ -134,7 +134,7 @@ for outer_fold, (train_idx, test_idx) in enumerate(outer_cv.split(X, y)):
                 X_val_sel = X_val_inner[selected_features]
 
                 # Train Random Forest and evaluate
-                rf = RandomForestClassifier(**rf_params, n_jobs=-1, random_state=42)
+                rf = RandomForestClassifier(**rf_params, n_jobs=-1)
                 rf.fit(X_train_sel, y_train_inner)
                 
                 probs = rf.predict_proba(X_val_sel)[:, 1]
@@ -182,7 +182,7 @@ for outer_fold, (train_idx, test_idx) in enumerate(outer_cv.split(X, y)):
     if not final_features:
         outer_score = 0
     else:
-        final_rf = RandomForestClassifier(**best_rf_params, n_jobs=-1, random_state=42)
+        final_rf = RandomForestClassifier(**best_rf_params, n_jobs=-1)
         final_rf.fit(X_train_outer_corr[final_features], y_train_outer)
         
         probs = final_rf.predict_proba(X_test_outer_corr[final_features])[:, 1]
@@ -239,3 +239,6 @@ with open('model_scores_RF.pkl', 'wb') as f:
     pickle.dump(all_model_scores, f)
 
 print(f"\nScores per model (Saved for Wilcoxon):\n{all_model_scores}")
+print("\n=== Processing Complete ===")
+
+#%%
