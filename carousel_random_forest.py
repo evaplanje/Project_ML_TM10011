@@ -1,16 +1,18 @@
 #%% Imports
+
 import itertools
 import pickle
 import numpy as np
 import pandas as pd
 
 from sklearn.model_selection import StratifiedKFold
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import roc_auc_score
 from sklearn.preprocessing import RobustScaler
+from sklearn.svm import RandomForestClassifier
+from sklearn.metrics import roc_auc_score
 
 from load_data import load_data, split_pd
 from preprocessing import remove_zero_variance_features, remove_highly_correlated_features
+
 from fs_lasso import fs_lasso
 from fs_mRMR import fs_mrmr
 from fs_mutualinformation import fs_mutualinformation

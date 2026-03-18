@@ -1,6 +1,6 @@
-fold,model_name,best_fs_method,best_fs_param,best_svm_params,n_features_selected,test_auc
-1,"mi_SVM_{'C': 0.1, 'kernel': 'linear', 'gamma': 'scale'}",mi,15,"{'C': 0.1, 'kernel': 'linear', 'gamma': 'scale'}",15,0.6275
-2,"mi_SVM_{'C': 0.1, 'kernel': 'linear', 'gamma': 'scale'}",mi,15,"{'C': 0.1, 'kernel': 'linear', 'gamma': 'scale'}",15,0.5394736842105263
-3,"mrmr_SVM_{'C': 0.1, 'kernel': 'linear', 'gamma': 'scale'}",mrmr,15,"{'C': 0.1, 'kernel': 'linear', 'gamma': 'scale'}",15,0.6763157894736842
-4,"rfe_SVM_{'C': 0.1, 'kernel': 'linear', 'gamma': 'scale'}",rfe,20,"{'C': 0.1, 'kernel': 'linear', 'gamma': 'scale'}",20,0.7105263157894737
-5,"mi_SVM_{'C': 0.1, 'kernel': 'linear', 'gamma': 'scale'}",mi,10,"{'C': 0.1, 'kernel': 'linear', 'gamma': 'scale'}",10,0.6736842105263158
+fold,model_name,best_fs_method,best_fs_param,best_svm_params,n_features_selected,roc_auc_score
+1,mi_SVM,mi,15,"{'C': 0.1, 'kernel': 'linear', 'gamma': 'scale'}",15,0.59
+2,mi_SVM,mi,15,"{'C': 0.1, 'kernel': 'linear', 'gamma': 'scale'}",15,0.4710526315789474
+3,mrmr_SVM,mrmr,15,"{'C': 0.1, 'kernel': 'linear', 'gamma': 'scale'}",15,0.6552631578947369
+4,mrmr_SVM,mrmr,15,"{'C': 0.1, 'kernel': 'linear', 'gamma': 'scale'}",15,0.7947368421052632
+5,rfe_SVM,rfe,15,"{'C': 0.1, 'kernel': 'linear', 'gamma': 'scale'}",15,0.5131578947368421

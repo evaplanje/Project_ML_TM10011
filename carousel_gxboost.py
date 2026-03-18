@@ -1,12 +1,14 @@
-#%%
+#%% Imports
+
+import itertools
+import pickle
 import numpy as np
 import pandas as pd
-import pickle
+
 from sklearn.model_selection import StratifiedKFold
-from xgboost import XGBClassifier
+from sklearn.preprocessing import RobustScaler
+from sklearn.svm import XGBClassifier
 from sklearn.metrics import roc_auc_score
-from sklearn.preprocessing import RobustScaler, LabelEncoder
-import itertools
 
 from load_data import load_data, split_pd
 from preprocessing import remove_zero_variance_features, remove_highly_correlated_features
