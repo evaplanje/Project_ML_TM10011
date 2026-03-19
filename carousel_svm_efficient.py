@@ -65,8 +65,8 @@ y = y_train.values
 
 #%% ---------------- NESTED CROSS-VALIDATION ----------------
 
-outer_cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
-inner_cv = StratifiedKFold(n_splits=3, shuffle=True, random_state=42)
+outer_cv = StratifiedKFold(n_splits=5, shuffle=True)
+inner_cv = StratifiedKFold(n_splits=3, shuffle=True)
 
 outer_results = []
 
