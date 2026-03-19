@@ -5,9 +5,9 @@ import pickle
 import numpy as np
 import pandas as pd
 
+from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import StratifiedKFold
 from sklearn.preprocessing import RobustScaler
-from sklearn.svm import RandomForestClassifier
 from sklearn.metrics import roc_auc_score
 
 from load_data import load_data, split_pd
@@ -22,6 +22,7 @@ from fs_RFE import perform_rfe
 
 C_VALUES = [0.01, 0.02, 0.03]
 K_VALUES = [10, 15, 20]
+
 C_VALUES = [0.02]
 K_VALUES = [15]
 

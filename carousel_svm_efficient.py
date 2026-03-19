@@ -5,9 +5,9 @@ import pickle
 import numpy as np
 import pandas as pd
 
+from sklearn.svm import SVC
 from sklearn.model_selection import StratifiedKFold
 from sklearn.preprocessing import RobustScaler
-from sklearn.svm import SVC
 from sklearn.metrics import roc_auc_score
 
 from load_data import load_data, split_pd
@@ -37,14 +37,12 @@ fs_configs = (
 
 # ---------------- SVM PARAM GRID ----------------
 
-# 🔵 FULL GRID
 SVM_param_grid = {
     'C': [0.1, 1, 10],
     'kernel': ['linear', 'rbf', 'poly'],        #misschien leidt poly tot overfitting
     'gamma': ['scale', 0.01, 0.1]
 }
 
-# 🔹 TEST GRID (overwrite)
 SVM_param_grid = {
     'C': [0.1],
     'kernel': ['linear'],
@@ -111,7 +109,7 @@ for outer_fold, (train_idx, test_idx) in enumerate(outer_cv.split(X, y)):
                 y_train_inner = pd.Series(y_train_outer[inner_train_idx], index=X_train_inner.index)
                 y_val_inner = pd.Series(y_train_outer[inner_val_idx], index=X_val_inner.index)
 
-                # ✅ Correlation removal INSIDE CV
+                # Correlation removal INSIDE CV
                 X_train_inner, kept_features = remove_highly_correlated_features(
                     X_train_inner,
                     correlation_threshold=0.95,

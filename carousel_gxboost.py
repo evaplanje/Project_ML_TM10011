@@ -5,9 +5,9 @@ import pickle
 import numpy as np
 import pandas as pd
 
+from xgboost import XGBClassifier
 from sklearn.model_selection import StratifiedKFold
-from sklearn.preprocessing import RobustScaler
-from sklearn.svm import XGBClassifier
+from sklearn.preprocessing import RobustScaler, LabelEncoder
 from sklearn.metrics import roc_auc_score
 
 from load_data import load_data, split_pd
