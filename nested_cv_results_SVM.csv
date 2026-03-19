@@ -1,6 +1,6 @@
 fold,model_name,best_fs_method,best_fs_param,best_svm_params,n_features_selected,roc_auc_score
-1,mi_SVM,mi,15,"{'C': 0.1, 'kernel': 'linear', 'gamma': 'scale'}",15,0.59
-2,mi_SVM,mi,15,"{'C': 0.1, 'kernel': 'linear', 'gamma': 'scale'}",15,0.4710526315789474
-3,mrmr_SVM,mrmr,15,"{'C': 0.1, 'kernel': 'linear', 'gamma': 'scale'}",15,0.6552631578947369
-4,mrmr_SVM,mrmr,15,"{'C': 0.1, 'kernel': 'linear', 'gamma': 'scale'}",15,0.7947368421052632
-5,rfe_SVM,rfe,15,"{'C': 0.1, 'kernel': 'linear', 'gamma': 'scale'}",15,0.5131578947368421
+1,rfe_SVM,rfe,15,"{'C': 0.1, 'kernel': 'linear', 'gamma': 'scale'}",15,0.6200000000000001
+2,mrmr_SVM,mrmr,15,"{'C': 0.1, 'kernel': 'linear', 'gamma': 'scale'}",15,0.6842105263157895
+3,mrmr_SVM,mrmr,15,"{'C': 0.1, 'kernel': 'linear', 'gamma': 'scale'}",15,0.6605263157894737
+4,mrmr_SVM,mrmr,15,"{'C': 0.1, 'kernel': 'linear', 'gamma': 'scale'}",15,0.6131578947368421
+5,rfe_SVM,rfe,15,"{'C': 0.1, 'kernel': 'linear', 'gamma': 'scale'}",15,0.7921052631578948
