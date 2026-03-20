@@ -34,9 +34,13 @@ fs_configs = [{'method': 'lasso', 'param': c} for c in C_VALUES] + \
              [{'method': 'rfe', 'param': k} for k in K_VALUES]
 
 SVM_param_grid = {
-    'C': [0.1],
-    'kernel': ['linear'],
-    'gamma': ['scale']
+
+    'C': [0.1, 1, 10],
+
+    'kernel': ['linear', 'rbf'],
+
+    'gamma': ['scale', 'auto']
+
 }
 
 # Create a list of all SVM parameter combinations
