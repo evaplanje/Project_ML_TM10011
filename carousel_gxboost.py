@@ -37,13 +37,13 @@ xgb_param_grid = {
     'colsample_bytree': [0.6, 0.8, 1.0]  # Fraction of features used per tree
 }
 
-xgb_param_grid = {
-    'n_estimators': [100],     
-    'max_depth': [4],             
-    'learning_rate': [0.05],
-    'subsample': [0.8],      
-    'colsample_bytree': [0.8]
-}
+#xgb_param_grid = {
+#    'n_estimators': [100],     
+#    'max_depth': [4],             
+#    'learning_rate': [0.05],
+#    'subsample': [0.8],      
+#    'colsample_bytree': [0.8]
+#}
 
 xgb_keys, xgb_values = zip(*xgb_param_grid.items())
 xgb_param_combinations = [dict(zip(xgb_keys, v)) for v in itertools.product(*xgb_values)]
