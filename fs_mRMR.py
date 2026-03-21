@@ -47,7 +47,7 @@ def fs_mrmr(X_train, y_train, K=10, show_details=False):
     if not isinstance(y_train, pd.Series):
         y_train = pd.Series(y_train)
 
-    selected_features = mrmr_classif(X=X_train, y=y_train, K=K)
+    selected_features = mrmr_classif(X=X_train, y=y_train, K=K, show_progress=False)
 
     X_train_selected = X_train[selected_features]
 
