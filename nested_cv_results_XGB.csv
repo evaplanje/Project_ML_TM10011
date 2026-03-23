@@ -1,16 +1,6 @@
-<<<<<<< HEAD
-fold,best_fs_method,best_fs_param,best_xgb_params,n_features_selected,roc_auc_score,model_name,best_rf_params
-1,mrmr,10.0,"{'n_estimators': 50, 'max_depth': 5, 'learning_rate': 0.1, 'subsample': 0.8, 'colsample_bytree': 0.6}",10,0.65,,
-2,mi,20.0,"{'n_estimators': 50, 'max_depth': 4, 'learning_rate': 0.05, 'subsample': 0.6, 'colsample_bytree': 1.0}",20,0.5394736842105263,,
-3,mrmr,15.0,"{'n_estimators': 100, 'max_depth': 3, 'learning_rate': 0.1, 'subsample': 1.0, 'colsample_bytree': 1.0}",15,0.5631578947368422,,
-4,mi,10.0,"{'n_estimators': 50, 'max_depth': 5, 'learning_rate': 0.01, 'subsample': 0.6, 'colsample_bytree': 0.6}",10,0.4855263157894737,,
-5,lasso,0.03,"{'n_estimators': 200, 'max_depth': 3, 'learning_rate': 0.01, 'subsample': 1.0, 'colsample_bytree': 0.6}",24,0.5907894736842105,,
-5,,0.03,,24,0.5907894736842105,lasso_XGBoost,"{'n_estimators': 200, 'max_depth': 3, 'learning_rate': 0.01, 'subsample': 1.0, 'colsample_bytree': 0.6}"
-=======
 fold,model_name,best_fs_method,best_fs_param,best_xgb_params,n_features_selected,roc_auc_score
-1,mrmr_XBG,mrmr,15.0,"{'n_estimators': 100, 'max_depth': 4, 'learning_rate': 0.05, 'subsample': 0.8, 'colsample_bytree': 0.8}",15,0.575
-2,mi_XBG,mi,15.0,"{'n_estimators': 100, 'max_depth': 4, 'learning_rate': 0.05, 'subsample': 0.8, 'colsample_bytree': 0.8}",15,0.6921052631578948
-3,lasso_XBG,lasso,0.02,"{'n_estimators': 100, 'max_depth': 4, 'learning_rate': 0.05, 'subsample': 0.8, 'colsample_bytree': 0.8}",21,0.7368421052631579
-4,mi_XBG,mi,15.0,"{'n_estimators': 100, 'max_depth': 4, 'learning_rate': 0.05, 'subsample': 0.8, 'colsample_bytree': 0.8}",15,0.49210526315789477
-5,mrmr_XBG,mrmr,15.0,"{'n_estimators': 100, 'max_depth': 4, 'learning_rate': 0.05, 'subsample': 0.8, 'colsample_bytree': 0.8}",15,0.5263157894736842
->>>>>>> ea2e0f5afa469e6cee218638d7d5c5c4f0e31579
+1,rfe_XBG,rfe,15.0,"{'n_estimators': 100, 'max_depth': 3, 'learning_rate': 0.01, 'subsample': 0.6, 'colsample_bytree': 1.0}",15,0.6475
+2,mrmr_XBG,mrmr,15.0,"{'n_estimators': 50, 'max_depth': 4, 'learning_rate': 0.05, 'subsample': 1.0, 'colsample_bytree': 0.8}",15,0.46842105263157896
+3,mrmr_XBG,mrmr,15.0,"{'n_estimators': 100, 'max_depth': 4, 'learning_rate': 0.1, 'subsample': 0.8, 'colsample_bytree': 0.6}",15,0.7789473684210526
+4,lasso_XBG,lasso,0.02,"{'n_estimators': 200, 'max_depth': 4, 'learning_rate': 0.1, 'subsample': 1.0, 'colsample_bytree': 1.0}",17,0.4894736842105263
+5,lasso_XBG,lasso,0.02,"{'n_estimators': 200, 'max_depth': 5, 'learning_rate': 0.1, 'subsample': 0.6, 'colsample_bytree': 0.6}",23,0.5236842105263158
