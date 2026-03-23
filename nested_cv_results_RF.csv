@@ -1,6 +1,6 @@
 fold,model_name,best_fs_method,best_fs_param,best_rf_params,n_features_selected,roc_auc_score
-1,mrmr_RF,mrmr,15,"{'n_estimators': 200, 'max_depth': 5, 'min_samples_split': 6, 'min_samples_leaf': 3, 'max_features': 'sqrt'}",15,0.6525000000000001
-2,mi_RF,mi,15,"{'n_estimators': 200, 'max_depth': 5, 'min_samples_split': 6, 'min_samples_leaf': 3, 'max_features': 'sqrt'}",15,0.5631578947368421
-3,rfe_RF,rfe,15,"{'n_estimators': 200, 'max_depth': 5, 'min_samples_split': 6, 'min_samples_leaf': 3, 'max_features': 'sqrt'}",15,0.6105263157894737
-4,mrmr_RF,mrmr,15,"{'n_estimators': 200, 'max_depth': 5, 'min_samples_split': 6, 'min_samples_leaf': 3, 'max_features': 'sqrt'}",15,0.6578947368421052
-5,mrmr_RF,mrmr,15,"{'n_estimators': 200, 'max_depth': 5, 'min_samples_split': 6, 'min_samples_leaf': 3, 'max_features': 'sqrt'}",15,0.6
+1,rfe_RF,rfe,10,"{'n_estimators': 100, 'max_depth': 7, 'min_samples_split': 10, 'min_samples_leaf': 10, 'max_features': 'log2'}",10,0.655
+2,mi_RF,mi,15,"{'n_estimators': 100, 'max_depth': 7, 'min_samples_split': 4, 'min_samples_leaf': 2, 'max_features': 'sqrt'}",15,0.6815789473684211
+3,mrmr_RF,mrmr,15,"{'n_estimators': 100, 'max_depth': 7, 'min_samples_split': 6, 'min_samples_leaf': 5, 'max_features': 'log2'}",15,0.5763157894736842
+4,rfe_RF,rfe,15,"{'n_estimators': 300, 'max_depth': 7, 'min_samples_split': 10, 'min_samples_leaf': 5, 'max_features': 0.3}",15,0.6184210526315789
+5,mrmr_RF,mrmr,15,"{'n_estimators': 100, 'max_depth': 5, 'min_samples_split': 4, 'min_samples_leaf': 5, 'max_features': 0.3}",15,0.6894736842105265
