@@ -37,11 +37,11 @@ fs_configs = (
 
 # ---------------- SVM PARAM GRID ----------------
 
-SVM_param_grid = {
-    'C': [0.1, 1, 10],
-    'kernel': ['linear', 'rbf', 'poly'],        #misschien leidt poly tot overfitting
-    'gamma': ['scale', 0.01, 0.1]
-}
+#SVM_param_grid = {
+ #   'C': [0.1, 1, 10],
+  #  'kernel': ['linear', 'rbf', 'poly'],        #misschien leidt poly tot overfitting
+   # 'gamma': ['scale', 0.01, 0.1]
+#}
 
 SVM_param_grid = {
 
@@ -235,3 +235,5 @@ print("\nScores per model:")
 print(all_model_scores)
 
 print("\n=== Processing Complete ===")
+
+#%%
