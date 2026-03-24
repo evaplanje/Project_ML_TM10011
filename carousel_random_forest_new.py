@@ -23,8 +23,8 @@ from fs_RFE import perform_rfe
 C_VALUES = [0.01, 0.02, 0.03]
 K_VALUES = [10, 15, 20]
 
-# C_VALUES = [0.02]
-# K_VALUES = [15]
+C_VALUES = [0.02]
+K_VALUES = [15]
 
 fs_configs = (
     [{'method': 'lasso', 'param': c} for c in C_VALUES] +
@@ -41,13 +41,15 @@ rf_param_grid = {
     'max_features': ['sqrt', 'log2', 0.3]  
 }
 
-# rf_param_grid = {
-#     'n_estimators': [200],
-#     'max_depth': [5],
-#     'min_samples_split': [6],
-#     'min_samples_leaf': [3],
-#     'max_features': ['sqrt']
-# }
+rf_param_grid = {
+    'n_estimators': [200],
+    'max_depth': [5],
+    'min_samples_split': [6],
+    'min_samples_leaf': [3],
+    'max_features': ['sqrt']
+}
+
+# Create combinations
 rf_keys, rf_values = zip(*rf_param_grid.items())
 rf_param_combinations = [dict(zip(rf_keys, v)) for v in itertools.product(*rf_values)]
 
@@ -91,9 +93,12 @@ for outer_fold, (train_idx, test_idx) in enumerate(outer_cv.split(X, y)):
         columns=X_test_outer.columns
     )
 
-    best_inner_score = -1
-    best_fs_config = None
-    best_rf_params = None
+    best_results = {
+        'lasso': {'score': -1, 'fs_config': None, 'rf_params': None},
+        'mrmr':  {'score': -1, 'fs_config': None, 'rf_params': None},
+        'mi':    {'score': -1, 'fs_config': None, 'rf_params': None},
+        'rfe':   {'score': -1, 'fs_config': None, 'rf_params': None}
+    }
 
     # ================= INNER LOOP (Hyperparameter Tuning) =================
     for fs_config in fs_configs:
@@ -106,6 +111,7 @@ for outer_fold, (train_idx, test_idx) in enumerate(outer_cv.split(X, y)):
                 # Split Inner Data
                 X_train_inner = X_train_outer_scaled.iloc[inner_train_idx].copy()
                 X_val_inner = X_train_outer_scaled.iloc[inner_val_idx].copy()
+             
                 y_train_inner = pd.Series(y_train_outer[inner_train_idx], index=X_train_inner.index)
                 y_val_inner = pd.Series(y_train_outer[inner_val_idx], index=X_val_inner.index)
 
@@ -129,6 +135,7 @@ for outer_fold, (train_idx, test_idx) in enumerate(outer_cv.split(X, y)):
 
                 # Validate selected features
                 selected_features = [f for f in selected_features if f in X_train_inner.columns]
+             
                 if not selected_features:
                     continue  # Skip if no features were selected
 
@@ -148,14 +155,16 @@ for outer_fold, (train_idx, test_idx) in enumerate(outer_cv.split(X, y)):
                 continue
 
             avg_score = np.mean(inner_scores)
+            method = fs_config['method']
 
-            # Update best configuration if current is better
-            if avg_score > best_inner_score:
-                best_inner_score = avg_score
-                best_fs_config = fs_config
-                best_rf_params = rf_params
-
-    print(f"Best Configuration -> FS: {best_fs_config}, RF: {best_rf_params}")
+            # Update the dictionary if the current score beats the saved best score for that method
+            if avg_score > best_results[method]['score']:
+                best_results[method]['score'] = avg_score
+                best_results[method]['fs_config'] = fs_config
+                best_results[method]['rf_params'] = rf_params    
+    
+    for method, result in best_results.items():
+        print(f"Best Configuration ({method.upper()}) -> FS: {result['fs_config']}, Score: {result['score']:.4f}, rf Params: {result['rf_params']}")
 
     # ================= OUTER EVALUATION (Model Validation) =================
     
@@ -168,41 +177,45 @@ for outer_fold, (train_idx, test_idx) in enumerate(outer_cv.split(X, y)):
     X_test_outer_corr = X_test_outer_scaled[kept_features_outer]
     y_train_outer_series = pd.Series(y_train_outer, index=X_train_outer_corr.index)
 
-    # Apply the BEST Feature Selection method found in the inner loop
-    if best_fs_config['method'] == 'lasso':
-        _, final_features = fs_lasso(X_train_outer_corr, y_train_outer_series, C=best_fs_config['param'])
-    elif best_fs_config['method'] == 'mrmr':
-        _, final_features = fs_mrmr(X_train_outer_corr, y_train_outer_series, K=best_fs_config['param'], show_details=False)
-    elif best_fs_config['method'] == 'mi':
-        final_features, _ = fs_mutualinformation(X_train_outer_corr, y_train_outer_series, k=best_fs_config['param'], showdetails=False)
-    elif best_fs_config['method'] == 'rfe':
-        _, final_features = perform_rfe(X_train_outer_corr, y_train_outer_series, n_features_to_select=best_fs_config['param'])
+    # Evaluate the best configuration for EACH feature selection method
+    for method, result in best_results.items():
+        best_fs_config = result['fs_config']
+        best_rf_params = result['rf_params']
 
-    # Validate final features
-    final_features = [f for f in final_features if f in X_train_outer_corr.columns]
+        # Safety check: skip if the method didn't find any valid config in the inner loop
+        if best_fs_config is None or best_rf_params is None:
+            continue
 
-    # Train final outer model and evaluate on the true holdout set (outer test)
-    if not final_features:
-        outer_score = 0
-    else:
-        final_rf = RandomForestClassifier(**best_rf_params, n_jobs=-1)
-        final_rf.fit(X_train_outer_corr[final_features], y_train_outer)
-        
-        probs = final_rf.predict_proba(X_test_outer_corr[final_features])[:, 1]
-        outer_score = roc_auc_score(y_test_outer, probs)
+        # Apply best FS
+        if method == 'lasso':
+            _, final_features = fs_lasso(X_train_outer_corr, y_train_outer_series, C=best_fs_config['param'])
+        elif method == 'mrmr':
+            _, final_features = fs_mrmr(X_train_outer_corr, y_train_outer_series, K=best_fs_config['param'], show_details=False)
+        elif method == 'mi':
+            final_features, _ = fs_mutualinformation(X_train_outer_corr, y_train_outer_series, k=best_fs_config['param'], showdetails=False)
+        elif method == 'rfe':
+            _, final_features = perform_rfe(X_train_outer_corr, y_train_outer_series, n_features_to_select=best_fs_config['param'])
 
-    # Store consolidated results for this fold
-    outer_results.append({
-        'fold': outer_fold + 1,
-        'model_name': f"{best_fs_config['method']}_RF",
-        'best_fs_method': best_fs_config['method'],
-        'best_fs_param': best_fs_config['param'],
-        'best_rf_params': best_rf_params,
-        'n_features_selected': len(final_features),
-        'roc_auc_score': outer_score
-    })
+        final_features = [f for f in final_features if f in X_train_outer_corr.columns]
 
+        if not final_features:
+            outer_score = 0
+        else:
+            final_rf = SVC(**best_rf_params, probability=True)
+            final_rf.fit(X_train_outer_corr[final_features], y_train_outer)
 
+            probs = final_rf.predict_proba(X_test_outer_corr[final_features])[:, 1]
+            outer_score = roc_auc_score(y_test_outer, probs)
+
+        outer_results.append({
+            'fold': outer_fold + 1,
+            'model_name': f"{method.upper()}_rf", 
+            'fs_method': method,
+            'best_fs_param': best_fs_config['param'],
+            'best_rf_params': best_rf_params,
+            'n_features_selected': len(final_features),
+            'roc_auc_score': outer_score
+        })
 # ---------------- SAVE & DISPLAY RESULTS ----------------
 
 results_df = pd.DataFrame(outer_results)
@@ -210,38 +223,35 @@ results_df = pd.DataFrame(outer_results)
 print("\n" + "="*20 + " RESULTS " + "="*20)
 print(results_df.to_string(index=False))
 
-# Calculate Valid Scores
-valid_scores = results_df['roc_auc_score'].dropna()
-valid_scores = valid_scores[valid_scores.apply(lambda x: isinstance(x, (int, float)))]
+# Calculate and print the average and std per feature selection method
+if not results_df.empty:
+    print("\nAverage Test ROC AUC Score per Model:")
+    summary_stats = results_df.groupby('model_name')['roc_auc_score'].agg(['mean', 'std'])
+    for index, row in summary_stats.iterrows():
+        print(f"{index}: {row['mean']:.3f} +/- {row['std']:.3f}")
 
-if not valid_scores.empty:
-    print(f"\nAverage Test ROC AUC Score: {valid_scores.mean():.3f} +/- {valid_scores.std():.3f}")
-
-# 1. Save to CSV
+# Save CSV
 results_df.to_csv('nested_cv_results_RF.csv', index=False)
 
-# 2. Extract scores for Wilcoxon testing and save to Pickle
+# Save pickle (Wilcoxon)
 all_model_scores = {}
 
 for _, row in results_df.iterrows():
-    if pd.isna(row.get('model_name')):
-        continue
-
     model_name = row['model_name']
     score = row['roc_auc_score']
 
-    if not isinstance(score, (int, float)):
-        continue
-
     if model_name not in all_model_scores:
         all_model_scores[model_name] = []
-    
+
     all_model_scores[model_name].append(score)
 
 with open('model_scores_RF.pkl', 'wb') as f:
     pickle.dump(all_model_scores, f)
 
-print(f"\nScores per model (Saved for Wilcoxon):\n{all_model_scores}")
+print("\nScores per model:")
+for model, scores in all_model_scores.items():
+    print(f"{model}: {[f'{s:.4f}' for s in scores]}")
+
 print("\n=== Processing Complete ===")
 
 #%%
