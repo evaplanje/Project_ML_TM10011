@@ -8,7 +8,7 @@ import pandas as pd
 from xgboost import XGBClassifier
 from sklearn.model_selection import StratifiedKFold
 from sklearn.preprocessing import RobustScaler, LabelEncoder
-from sklearn.metrics import roc_auc_score
+from sklearn.metrics import roc_auc_score, accuracy_score
 
 from load_data import load_data, split_pd
 from preprocessing import remove_zero_variance_features, remove_highly_correlated_features
@@ -24,8 +24,8 @@ from fs_RFE import perform_rfe
 C_VALUES = [0.01, 0.02, 0.03]
 K_VALUES = [10, 15, 20]
 
-# C_VALUES = [0.02]
-# K_VALUES = [15]
+C_VALUES = [0.02]
+K_VALUES = [15]
 
 # Build a list of all Feature Selection configurations to test
 fs_configs = [{'method': 'lasso', 'param': c} for c in C_VALUES] + \
@@ -42,13 +42,13 @@ xgb_param_grid = {
     'colsample_bytree': [0.6, 0.8, 1.0]  # Fraction of features used per tree
 }
 
-#xgb_param_grid = {
-#    'n_estimators': [100],     
-#    'max_depth': [4],             
-#    'learning_rate': [0.05],
-#    'subsample': [0.8],      
-#    'colsample_bytree': [0.8]
-#}
+xgb_param_grid = {
+   'n_estimators': [100],
+   'max_depth': [4],     
+   'learning_rate': [0.05],
+   'subsample': [0.8],      
+   'colsample_bytree': [0.8]
+}
 
 xgb_keys, xgb_values = zip(*xgb_param_grid.items())
 xgb_param_combinations = [dict(zip(xgb_keys, v)) for v in itertools.product(*xgb_values)]
@@ -67,8 +67,9 @@ y = label_encoder.fit_transform(y)
 
 #%% ---------------- NESTED CV ----------------
 
-outer_cv = StratifiedKFold(n_splits=5, shuffle=True)
-inner_cv = StratifiedKFold(n_splits=3, shuffle=True)
+outer_cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=7)
+inner_cv = StratifiedKFold(n_splits=3, shuffle=True, random_state=7)
+
 
 outer_results = []
 
@@ -81,10 +82,13 @@ for outer_fold, (train_idx, test_idx) in enumerate(outer_cv.split(X, y)):
     scaler = RobustScaler()
     X_train_outer_scaled = pd.DataFrame(scaler.fit_transform(X_train_outer), columns=X_train_outer.columns)
     X_test_outer_scaled = pd.DataFrame(scaler.transform(X_test_outer), columns=X_test_outer.columns)
-
-    best_inner_score = -1
-    best_fs_config = None
-    best_xgb_params = None
+    
+    best_results = {
+        'lasso': {'score': -1, 'fs_config': None, 'xgb_params': None},
+        'mrmr':  {'score': -1, 'fs_config': None, 'xgb_params': None},
+        'mi':    {'score': -1, 'fs_config': None, 'xgb_params': None},
+        'rfe':   {'score': -1, 'fs_config': None, 'xgb_params': None}
+    }
 
     # --- INNER LOOP: Hyperparameter Tuning ---
     for fs_config in fs_configs:
@@ -127,24 +131,27 @@ for outer_fold, (train_idx, test_idx) in enumerate(outer_cv.split(X, y)):
                 X_val_inner_sel = X_val_inner[selected_features]
                 
                 # 2. Train XGBoost
-                xgb_model = XGBClassifier(**xgb_params, n_jobs=-1, use_label_encoder=False, eval_metric='logloss')
+                xgb_model = XGBClassifier(**xgb_params, random_state = 7, n_jobs=-1, use_label_encoder=False, eval_metric='logloss')
                 xgb_model.fit(X_train_inner_sel, y_train_inner)
                 
-                # 3. Evaluate
-                preds = xgb_model.predict(X_val_inner_sel)
-                inner_scores.append(roc_auc_score(y_val_inner, preds))
-            
+                probs = xgb_model.predict_proba(X_val_inner_sel)[:, 1]
+                inner_scores.append(roc_auc_score(y_val_inner, probs))      
+
             if not inner_scores:
                 continue
                 
-            avg_inner_score = np.mean(inner_scores)
-            
-            if avg_inner_score > best_inner_score:
-                best_inner_score = avg_inner_score
-                best_fs_config = fs_config
-                best_xgb_params = xgb_params
 
-    print(f"Best Inner Tuning - FS: {best_fs_config['method']} (param: {best_fs_config['param']}), XGB: {best_xgb_params}")
+            avg_score = np.mean(inner_scores)
+            method = fs_config['method']
+
+            # Update the dictionary if the current score beats the saved best score for that method
+            if avg_score > best_results[method]['score']:
+                best_results[method]['score'] = avg_score
+                best_results[method]['fs_config'] = fs_config
+                best_results[method]['xgb_params'] = xgb_params    
+    
+    for method, result in best_results.items():
+        print(f"Best Configuration ({method.upper()}) -> FS: {result['fs_config']}, Score: {result['score']:.4f}, xgb Params: {result['xgb_params']}")
 
     # --- OUTER LOOP: Evaluate the Best Model Pipeline ---
     
@@ -156,84 +163,92 @@ for outer_fold, (train_idx, test_idx) in enumerate(outer_cv.split(X, y)):
     )
 
     X_test_outer_corr = X_test_outer_scaled[kept_features_outer]
-
     y_train_outer_series = pd.Series(y_train_outer, index=X_train_outer_corr.index)
 
-    # --- Feature Selection ---
-    if best_fs_config['method'] == 'lasso':
-        _, final_selected_features = fs_lasso(X_train_outer_corr, y_train_outer_series, C=best_fs_config['param'])
-    elif best_fs_config['method'] == 'mrmr':
-        _, final_selected_features = fs_mrmr(X_train_outer_corr, y_train_outer_series, K=best_fs_config['param'], show_details=False)
-    elif best_fs_config['method'] == 'mi':
-        final_selected_features, _ = fs_mutualinformation(X_train_outer_corr, y_train_outer_series, k=best_fs_config['param'], showdetails=False)
-    elif best_fs_config['method'] == 'rfe':
-        _, final_selected_features = perform_rfe(X_train_outer_corr, y_train_outer_series, n_features_to_select=best_fs_config['param'])
+    for method, result in best_results.items():
+        best_fs_config = result['fs_config']
+        best_xgb_params = result['xgb_params']
 
-    final_selected_features = list(final_selected_features)
-    final_selected_features = [f for f in final_selected_features if f in X_train_outer_corr.columns]
+        # Safety check: skip if the method didn't find any valid config in the inner loop
+        if best_fs_config is None or best_xgb_params is None:
+            continue
 
-    if not final_selected_features:
-        outer_score = 0
-    else:
-        final_xgb = XGBClassifier(
-            **best_xgb_params,
-            n_jobs=-1,
-            eval_metric='logloss'
-        )
+        # Apply best FS
+        if method == 'lasso':
+            _, final_features = fs_lasso(X_train_outer_corr, y_train_outer_series, C=best_fs_config['param'])
+        elif method == 'mrmr':
+            _, final_features = fs_mrmr(X_train_outer_corr, y_train_outer_series, K=best_fs_config['param'], show_details=False)
+        elif method == 'mi':
+            final_features, _ = fs_mutualinformation(X_train_outer_corr, y_train_outer_series, k=best_fs_config['param'], showdetails=False)
+        elif method == 'rfe':
+            _, final_features = perform_rfe(X_train_outer_corr, y_train_outer_series, n_features_to_select=best_fs_config['param'])
 
-        final_xgb.fit(X_train_outer_corr[final_selected_features], y_train_outer)
+        final_features = [f for f in final_features if f in X_train_outer_corr.columns]
 
-        final_probs = final_xgb.predict_proba(X_test_outer_corr[final_selected_features])[:, 1]
-        outer_score = roc_auc_score(y_test_outer, final_probs) 
-    outer_results.append({
-        'fold': outer_fold + 1,
-        'model_name': f"{best_fs_config['method']}_XBG",
-        'best_fs_method': best_fs_config['method'],
-        'best_fs_param': best_fs_config['param'],
-        'best_xgb_params': best_xgb_params,
-        'n_features_selected': len(final_selected_features),
-        'roc_auc_score': outer_score
-    })
- 
+        if not final_features:
+            outer_score_auc = 0.5
+            outer_score_acc = 0.0
+
+        else:
+            final_xgb = XGBClassifier(**best_xgb_params,random_state = 7, n_jobs=-1, eval_metric='logloss')
+            final_xgb.fit(X_train_outer_corr[final_features], y_train_outer)
+
+            probs = final_xgb.predict_proba(X_test_outer_corr[final_features])[:, 1]
+            outer_score_auc = roc_auc_score(y_test_outer, probs)
+            preds = (probs >= 0.5).astype(int)
+            outer_score_acc = accuracy_score(y_test_outer, preds)
+
+        outer_results.append({
+            'fold': outer_fold + 1,
+            'model_name': f"{method.upper()}_XGB", 
+            'fs_method': method,
+            'best_fs_param': best_fs_config['param'],
+            'best_xgb_params': best_xgb_params,
+            'n_features_selected': len(final_features),
+            'roc_auc_score': outer_score_auc,
+            'accuracy_score': outer_score_acc
+
+        }) 
 
 #---------------- FINAL RESULTS ----------------
-
 results_df = pd.DataFrame(outer_results)
 
 print("\n" + "="*20 + " RESULTS " + "="*20)
 print(results_df.to_string(index=False))
 
-# Calculate Valid Scores
-valid_scores = results_df['roc_auc_score'].dropna()
-valid_scores = valid_scores[valid_scores.apply(lambda x: isinstance(x, (int, float)))]
-
-
+# Calculate and print the average and std per feature selection method
 if not results_df.empty:
-    print(f"\nAverage Test Roc AUC score: {results_df['roc_auc_score'].mean():.3f} +/- {results_df['roc_auc_score'].std():.3f}")
+    print("\nAverage Test ROC AUC Score per Model:")
+    summary_stats = results_df.groupby('model_name')['roc_auc_score'].agg(['mean', 'std'])
+    for index, row in summary_stats.iterrows():
+        print(f"{index}: {row['mean']:.3f} +/- {row['std']:.3f}")
+    print("\nAverage Test Accuracy Score per Model:")
+    summary_stats = results_df.groupby('model_name')['accuracy_score'].agg(['mean', 'std'])
+    for index, row in summary_stats.iterrows():
+        print(f"{index}: {row['mean']:.3f} +/- {row['std']:.3f}")
 
-# 1. Save to CSV
+
+
+# Save CSV
 results_df.to_csv('nested_cv_results_XGB.csv', index=False)
 
-# 2. Extract scores for Wilcoxon testing and save to Pickle
+# Save pickle (Wilcoxon)
 all_model_scores = {}
 
 for _, row in results_df.iterrows():
-    if pd.isna(row.get('model_name')):
-        continue
-
     model_name = row['model_name']
     score = row['roc_auc_score']
 
-    if not isinstance(score, (int, float)):
-        continue
-
     if model_name not in all_model_scores:
         all_model_scores[model_name] = []
-    
+
     all_model_scores[model_name].append(score)
 
 with open('model_scores_XGB.pkl', 'wb') as f:
     pickle.dump(all_model_scores, f)
 
-print(f"\nScores per model (Saved for Wilcoxon):\n{all_model_scores}")
+print("\nScores per model:")
+for model, scores in all_model_scores.items():
+    print(f"{model}: {[f'{s:.4f}' for s in scores]}")
+
 print("\n=== Processing Complete ===")

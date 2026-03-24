@@ -1,5 +1,4 @@
 #%% Imports
-
 import itertools
 import pickle
 import numpy as np
@@ -8,7 +7,7 @@ import pandas as pd
 from sklearn.svm import SVC
 from sklearn.model_selection import StratifiedKFold
 from sklearn.preprocessing import RobustScaler
-from sklearn.metrics import roc_auc_score
+from sklearn.metrics import roc_auc_score, accuracy_score
 
 from load_data import load_data, split_pd
 from preprocessing import remove_zero_variance_features, remove_highly_correlated_features
@@ -64,8 +63,8 @@ y = y_train.values
 
 #%% ---------------- NESTED CROSS-VALIDATION ----------------
 
-outer_cv = StratifiedKFold(n_splits=5, shuffle=True)
-inner_cv = StratifiedKFold(n_splits=3, shuffle=True)
+outer_cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=7)
+inner_cv = StratifiedKFold(n_splits=3, shuffle=True, random_state=7)
 
 outer_results = []
 
@@ -138,7 +137,7 @@ for outer_fold, (train_idx, test_idx) in enumerate(outer_cv.split(X, y)):
                 X_val_sel = X_val_inner[selected_features]
 
                 # Train SVM
-                svm = SVC(**svm_params, probability=True)
+                svm = SVC(**svm_params, random_state= 7 ,probability=True)
                 svm.fit(X_train_sel, y_train_inner)
 
                 probs = svm.predict_proba(X_val_sel)[:, 1]
@@ -168,7 +167,6 @@ for outer_fold, (train_idx, test_idx) in enumerate(outer_cv.split(X, y)):
         show_details=False
     )
     X_test_outer_corr = X_test_outer_scaled[kept_features_outer]
-
     y_train_outer_series = pd.Series(y_train_outer, index=X_train_outer_corr.index)
 
     # Evaluate the best configuration for EACH feature selection method
@@ -193,13 +191,17 @@ for outer_fold, (train_idx, test_idx) in enumerate(outer_cv.split(X, y)):
         final_features = [f for f in final_features if f in X_train_outer_corr.columns]
 
         if not final_features:
-            outer_score = 0
+            outer_score_auc = 0.5
+            outer_score_acc = 0
+
         else:
-            final_svm = SVC(**best_svm_params, probability=True)
+            final_svm = SVC(**best_svm_params, random_state= 7,  probability=True)
             final_svm.fit(X_train_outer_corr[final_features], y_train_outer)
 
             probs = final_svm.predict_proba(X_test_outer_corr[final_features])[:, 1]
-            outer_score = roc_auc_score(y_test_outer, probs)
+            outer_score_auc = roc_auc_score(y_test_outer, probs)
+            preds = (probs >= 0.5).astype(int)
+            outer_score_acc = accuracy_score(y_test_outer, preds)
 
         outer_results.append({
             'fold': outer_fold + 1,
@@ -208,11 +210,13 @@ for outer_fold, (train_idx, test_idx) in enumerate(outer_cv.split(X, y)):
             'best_fs_param': best_fs_config['param'],
             'best_svm_params': best_svm_params,
             'n_features_selected': len(final_features),
-            'roc_auc_score': outer_score
+            'roc_auc_score': outer_score_auc,
+            'accuracy_score': outer_score_acc
+
+
         })
 
 # ---------------- RESULTS ----------------
-
 results_df = pd.DataFrame(outer_results)
 
 print("\n" + "="*20 + " RESULTS " + "="*20)
@@ -224,6 +228,12 @@ if not results_df.empty:
     summary_stats = results_df.groupby('model_name')['roc_auc_score'].agg(['mean', 'std'])
     for index, row in summary_stats.iterrows():
         print(f"{index}: {row['mean']:.3f} +/- {row['std']:.3f}")
+    print("\nAverage Test Accuracy Score per Model:")
+    summary_stats = results_df.groupby('model_name')['accuracy_score'].agg(['mean', 'std'])
+    for index, row in summary_stats.iterrows():
+        print(f"{index}: {row['mean']:.3f} +/- {row['std']:.3f}")
+
+
 
 # Save CSV
 results_df.to_csv('nested_cv_results_SVM.csv', index=False)

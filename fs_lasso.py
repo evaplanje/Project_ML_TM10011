@@ -30,6 +30,7 @@ def fs_lasso(
         solver=solver,
         max_iter=max_iter,
         class_weight=class_weight,
+        random_state=7
     )
     
     pipeline = Pipeline([("model", model)])
