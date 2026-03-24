@@ -201,7 +201,8 @@ for outer_fold, (train_idx, test_idx) in enumerate(outer_cv.split(X, y)):
         final_features = [f for f in final_features if f in X_train_outer_corr.columns]
 
         if not final_features:
-            outer_score = 0
+            outer_score_auc = 0.5
+            outer_score_acc = 0
         else:
             final_rf = RandomForestClassifier(**best_rf_params, n_jobs=-1)
             final_rf.fit(X_train_outer_corr[final_features], y_train_outer)
@@ -221,7 +222,7 @@ for outer_fold, (train_idx, test_idx) in enumerate(outer_cv.split(X, y)):
             'roc_auc_score': outer_score_auc
             'accuracy_score': outer_score_acc
 
-        })
+})
 # ---------------- SAVE & DISPLAY RESULTS ----------------
 
 results_df = pd.DataFrame(outer_results)
