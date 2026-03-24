@@ -248,3 +248,5 @@ for model, scores in all_model_scores.items():
     print(f"{model}: {[f'{s:.4f}' for s in scores]}")
 
 print("\n=== Processing Complete ===")
+
+#%%
