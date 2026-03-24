@@ -8,7 +8,7 @@ import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import StratifiedKFold
 from sklearn.preprocessing import RobustScaler
-from sklearn.metrics import roc_auc_score
+from sklearn.metrics import roc_auc_score, accuracy_score
 
 from load_data import load_data, split_pd
 from preprocessing import remove_zero_variance_features, remove_highly_correlated_features
@@ -68,8 +68,9 @@ y = y_train.values
 #%% ---------------- NESTED CROSS-VALIDATION ----------------
 
 # Outer loop evaluates model performance; Inner loop tunes hyperparameters
-outer_cv = StratifiedKFold(n_splits=5, shuffle=True)
-inner_cv = StratifiedKFold(n_splits=3, shuffle=True)
+outer_cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=7)
+inner_cv = StratifiedKFold(n_splits=3, shuffle=True, random_state=7)
+
 
 outer_results = []
 
@@ -134,10 +135,11 @@ for outer_fold, (train_idx, test_idx) in enumerate(outer_cv.split(X, y)):
                     _, selected_features = perform_rfe(X_train_inner, y_train_inner, n_features_to_select=fs_config['param'])
 
                 # Validate selected features
+                selected_features = list(selected_features)
                 selected_features = [f for f in selected_features if f in X_train_inner.columns]
              
                 if not selected_features:
-                    continue  # Skip if no features were selected
+                    continue 
 
                 # Subset data to selected features
                 X_train_sel = X_train_inner[selected_features]
@@ -201,20 +203,24 @@ for outer_fold, (train_idx, test_idx) in enumerate(outer_cv.split(X, y)):
         if not final_features:
             outer_score = 0
         else:
-            final_rf = SVC(**best_rf_params, probability=True)
+            final_rf = RandomForestClassifier(**best_rf_params, n_jobs=-1)
             final_rf.fit(X_train_outer_corr[final_features], y_train_outer)
-
+            
             probs = final_rf.predict_proba(X_test_outer_corr[final_features])[:, 1]
-            outer_score = roc_auc_score(y_test_outer, probs)
+            outer_score_auc = roc_auc_score(y_test_outer, probs)
+            preds = (probs >= 0.5).astype(int)
+            outer_score_acc = accuracy_score(y_test_outer, preds)
 
         outer_results.append({
             'fold': outer_fold + 1,
-            'model_name': f"{method.upper()}_rf", 
+            'model_name': f"{method.upper()}_RF", 
             'fs_method': method,
             'best_fs_param': best_fs_config['param'],
             'best_rf_params': best_rf_params,
             'n_features_selected': len(final_features),
-            'roc_auc_score': outer_score
+            'roc_auc_score': outer_score_auc
+            'accuracy_score': outer_score_acc
+
         })
 # ---------------- SAVE & DISPLAY RESULTS ----------------
 
@@ -229,12 +235,17 @@ if not results_df.empty:
     summary_stats = results_df.groupby('model_name')['roc_auc_score'].agg(['mean', 'std'])
     for index, row in summary_stats.iterrows():
         print(f"{index}: {row['mean']:.3f} +/- {row['std']:.3f}")
+    print("\nAverage Test Accuracy Score per Model:")
+    summary_stats = results_df.groupby('model_name')['accuracy_score'].agg(['mean', 'std'])
+    for index, row in summary_stats.iterrows():
+        print(f"{index}: {row['mean']:.3f} +/- {row['std']:.3f}")
 
 # Save CSV
 results_df.to_csv('nested_cv_results_RF.csv', index=False)
 
 # Save pickle (Wilcoxon)
 all_model_scores = {}
+
 
 for _, row in results_df.iterrows():
     model_name = row['model_name']
