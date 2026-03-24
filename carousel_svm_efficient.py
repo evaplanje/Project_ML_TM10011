@@ -24,10 +24,6 @@ from fs_RFE import perform_rfe
 C_VALUES = [0.01, 0.02, 0.03]
 K_VALUES = [10, 15, 20]
 
-# 🔹 TEST SETTINGS (overwrite above)
-C_VALUES = [0.02]
-K_VALUES = [15]
-
 fs_configs = (
     [{'method': 'lasso', 'param': c} for c in C_VALUES] +
     [{'method': 'mrmr', 'param': k} for k in K_VALUES] +
