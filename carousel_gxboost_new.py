@@ -78,9 +78,9 @@ for outer_fold, (train_idx, test_idx) in enumerate(outer_cv.split(X, y)):
     X_train_outer, X_test_outer = X.iloc[train_idx], X.iloc[test_idx]
     y_train_outer, y_test_outer = y[train_idx], y[test_idx]
     
-    scaler = RobustScaler()
-    X_train_outer_scaled = pd.DataFrame(scaler.fit_transform(X_train_outer), columns=X_train_outer.columns)
-    X_test_outer_scaled = pd.DataFrame(scaler.transform(X_test_outer), columns=X_test_outer.columns)
+    # scaler = RobustScaler()
+    # X_train_outer_scaled = pd.DataFrame(scaler.fit_transform(X_train_outer), columns=X_train_outer.columns)
+    # X_test_outer_scaled = pd.DataFrame(scaler.transform(X_test_outer), columns=X_test_outer.columns)
     
     best_results = {
         'lasso': {'score': -1, 'fs_config': None, 'xgb_params': None},
@@ -95,9 +95,21 @@ for outer_fold, (train_idx, test_idx) in enumerate(outer_cv.split(X, y)):
             
             inner_scores = []
             
-            for inner_train_idx, inner_val_idx in inner_cv.split(X_train_outer_scaled, y_train_outer):
-                X_train_inner = X_train_outer_scaled.iloc[inner_train_idx]
-                X_val_inner = X_train_outer_scaled.iloc[inner_val_idx]
+            for inner_train_idx, inner_val_idx in inner_cv.split(X_train_outer, y_train_outer):
+                X_train_inner = X_train_outer.iloc[inner_train_idx]
+                X_val_inner = X_train_outer.iloc[inner_val_idx]
+
+                scaler_inner = RobustScaler()
+                X_train_inner = pd.DataFrame(
+                    scaler_inner.fit_transform(X_train_inner),
+                    columns=X_train_inner.columns,
+                    index=X_train_inner.index
+                 )
+                X_val_inner = pd.DataFrame(
+                    scaler_inner.transform(X_val_inner),
+                    columns=X_val_inner.columns,
+                    index=X_val_inner.index
+                )
 
                 y_train_inner = pd.Series(y_train_outer[inner_train_idx], index=X_train_inner.index)
                 y_val_inner = pd.Series(y_train_outer[inner_val_idx], index=X_val_inner.index)
@@ -159,6 +171,17 @@ for outer_fold, (train_idx, test_idx) in enumerate(outer_cv.split(X, y)):
     # --- OUTER LOOP: Evaluate the Best Model Pipeline ---
     
     # --- Correlation filtering ---
+    scaler_outer = RobustScaler()
+    X_train_outer_scaled = pd.DataFrame(
+        scaler_outer.fit_transform(X_train_outer),
+        columns=X_train_outer.columns,
+        index=X_train_outer.index
+    )
+    X_test_outer_scaled = pd.DataFrame(
+        scaler_outer.transform(X_test_outer),
+        columns=X_test_outer.columns,
+        index=X_test_outer.index
+    )
     X_train_outer_var, kept_var_features_outer = remove_zero_variance_features(X_train_outer_scaled, show_details=False)
     X_test_outer_filtered = X_test_outer_scaled[kept_var_features_outer] # Apply var filter to test
 
