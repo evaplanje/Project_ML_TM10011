@@ -114,7 +114,8 @@ for outer_fold, (train_idx, test_idx) in enumerate(outer_cv.split(X, y)):
                 y_val_inner = pd.Series(y_train_outer[inner_val_idx], index=X_val_inner.index)
 
                 # Correlation removal INSIDE CV
-                X_train_inner, kept_features = remove_highly_correlated_features(
+                X_train_inner, kept_features =
+                remove_highly_correlated_features(
                     X_train_inner,
                     correlation_threshold=0.95,
                     show_details=False
