@@ -13,7 +13,7 @@ def perform_rfe(X_train, y_train, n_features_to_select=20):
     Perform true Recursive Feature Elimination (RFE) using Logistic Regression.
     """
     # 1. Define the base model (using standard LR to save computation time during RFE)
-    base_model = LogisticRegression(solver = 'liblinear',max_iter=1000, random_state=7)
+    base_model = LogisticRegression(solver = 'liblinear',max_iter=10000, random_state=7)
     
     # 2. Initialize RFE
     rfe = RFE(estimator=base_model, n_features_to_select=n_features_to_select, step=1)
