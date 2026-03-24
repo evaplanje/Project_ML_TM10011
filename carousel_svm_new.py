@@ -24,8 +24,8 @@ from fs_RFE import perform_rfe
 C_VALUES = [0.01, 0.02, 0.03]
 K_VALUES = [10, 15, 20]
 
-# C_VALUES = [0.02]
-# K_VALUES = [15]
+C_VALUES = [0.02]
+K_VALUES = [15]
 
 fs_configs = (
     [{'method': 'lasso', 'param': c} for c in C_VALUES] +
@@ -36,20 +36,16 @@ fs_configs = (
 
 # ---------------- SVM PARAM GRID ----------------
 
-#SVM_param_grid = {
- #   'C': [0.1, 1, 10],
-  #  'kernel': ['linear', 'rbf', 'poly'],        #misschien leidt poly tot overfitting
-   # 'gamma': ['scale', 0.01, 0.1]
-#}
+SVM_param_grid = {
+    'C': [0.1, 1, 10],
+    'kernel': ['linear', 'rbf'],
+    'gamma': ['scale', 'auto']
+}
 
 SVM_param_grid = {
-
-    'C': [0.1, 1, 10],
-
-    'kernel': ['linear', 'rbf'],
-
-    'gamma': ['scale', 'auto']
-
+    'C': [1],
+    'kernel': ['rbf'],
+    'gamma': ['auto']
 }
 
 # Create combinations
@@ -93,9 +89,12 @@ for outer_fold, (train_idx, test_idx) in enumerate(outer_cv.split(X, y)):
         columns=X_test_outer.columns
     )
 
-    best_inner_score = -1
-    best_fs_config = None
-    best_svm_params = None
+    best_results = {
+        'lasso': {'score': -1, 'fs_config': None, 'svm_params': None},
+        'mrmr':  {'score': -1, 'fs_config': None, 'svm_params': None},
+        'mi':    {'score': -1, 'fs_config': None, 'svm_params': None},
+        'rfe':   {'score': -1, 'fs_config': None, 'svm_params': None}
+    }
 
     # ================= INNER LOOP =================
     for fs_config in fs_configs:
@@ -149,17 +148,20 @@ for outer_fold, (train_idx, test_idx) in enumerate(outer_cv.split(X, y)):
                 continue
 
             avg_score = np.mean(inner_scores)
+            method = fs_config['method']
 
-            if avg_score > best_inner_score:
-                best_inner_score = avg_score
-                best_fs_config = fs_config
-                best_svm_params = svm_params
+            # Update the dictionary if the current score beats the saved best score for that method
+            if avg_score > best_results[method]['score']:
+                best_results[method]['score'] = avg_score
+                best_results[method]['fs_config'] = fs_config
+                best_results[method]['svm_params'] = svm_params    
 
-    print(f"Best Configuration -> FS: {best_fs_config}, SVM: {best_svm_params}")
+    for method, result in best_results.items():
+        print(f"Best Configuration ({method.upper()}) -> FS: {result['fs_config']}, Score: {result['score']:.4f}, SVM Params: {result['svm_params']}")
 
     # ================= OUTER EVALUATION =================
 
-    # Correlation removal on outer train
+    # Correlation removal on outer train (Only needs to happen once per fold)
     X_train_outer_corr, kept_features_outer = remove_highly_correlated_features(
         X_train_outer_scaled,
         correlation_threshold=0.95,
@@ -169,36 +171,45 @@ for outer_fold, (train_idx, test_idx) in enumerate(outer_cv.split(X, y)):
 
     y_train_outer_series = pd.Series(y_train_outer, index=X_train_outer_corr.index)
 
-    # Apply best FS
-    if best_fs_config['method'] == 'lasso':
-        _, final_features = fs_lasso(X_train_outer_corr, y_train_outer_series, C=best_fs_config['param'])
-    elif best_fs_config['method'] == 'mrmr':
-        _, final_features = fs_mrmr(X_train_outer_corr, y_train_outer_series, K=best_fs_config['param'], show_details=False)
-    elif best_fs_config['method'] == 'mi':
-        final_features, _ = fs_mutualinformation(X_train_outer_corr, y_train_outer_series, k=best_fs_config['param'], showdetails=False)
-    elif best_fs_config['method'] == 'rfe':
-        _, final_features = perform_rfe(X_train_outer_corr, y_train_outer_series, n_features_to_select=best_fs_config['param'])
+    # Evaluate the best configuration for EACH feature selection method
+    for method, result in best_results.items():
+        best_fs_config = result['fs_config']
+        best_svm_params = result['svm_params']
 
-    final_features = [f for f in final_features if f in X_train_outer_corr.columns]
+        # Safety check: skip if the method didn't find any valid config in the inner loop
+        if best_fs_config is None or best_svm_params is None:
+            continue
 
-    if not final_features:
-        outer_score = 0
-    else:
-        final_svm = SVC(**best_svm_params, probability=True)
-        final_svm.fit(X_train_outer_corr[final_features], y_train_outer)
+        # Apply best FS
+        if method == 'lasso':
+            _, final_features = fs_lasso(X_train_outer_corr, y_train_outer_series, C=best_fs_config['param'])
+        elif method == 'mrmr':
+            _, final_features = fs_mrmr(X_train_outer_corr, y_train_outer_series, K=best_fs_config['param'], show_details=False)
+        elif method == 'mi':
+            final_features, _ = fs_mutualinformation(X_train_outer_corr, y_train_outer_series, k=best_fs_config['param'], showdetails=False)
+        elif method == 'rfe':
+            _, final_features = perform_rfe(X_train_outer_corr, y_train_outer_series, n_features_to_select=best_fs_config['param'])
 
-        probs = final_svm.predict_proba(X_test_outer_corr[final_features])[:, 1]
-        outer_score = roc_auc_score(y_test_outer, probs)
+        final_features = [f for f in final_features if f in X_train_outer_corr.columns]
 
-    outer_results.append({
-        'fold': outer_fold + 1,
-        'model_name': f"{best_fs_config['method']}_SVM",
-        'best_fs_method': best_fs_config['method'],
-        'best_fs_param': best_fs_config['param'],
-        'best_svm_params': best_svm_params,
-        'n_features_selected': len(final_features),
-        'roc_auc_score': outer_score
-    })
+        if not final_features:
+            outer_score = 0
+        else:
+            final_svm = SVC(**best_svm_params, probability=True)
+            final_svm.fit(X_train_outer_corr[final_features], y_train_outer)
+
+            probs = final_svm.predict_proba(X_test_outer_corr[final_features])[:, 1]
+            outer_score = roc_auc_score(y_test_outer, probs)
+
+        outer_results.append({
+            'fold': outer_fold + 1,
+            'model_name': f"{method.upper()}_SVM", 
+            'fs_method': method,
+            'best_fs_param': best_fs_config['param'],
+            'best_svm_params': best_svm_params,
+            'n_features_selected': len(final_features),
+            'roc_auc_score': outer_score
+        })
 
 # ---------------- RESULTS ----------------
 
@@ -207,10 +218,12 @@ results_df = pd.DataFrame(outer_results)
 print("\n" + "="*20 + " RESULTS " + "="*20)
 print(results_df.to_string(index=False))
 
-valid_scores = results_df['roc_auc_score'].dropna()
-
-if not valid_scores.empty:
-    print(f"\nAverage Test ROC AUC Score: {valid_scores.mean():.3f} +/- {valid_scores.std():.3f}")
+# Calculate and print the average and std per feature selection method
+if not results_df.empty:
+    print("\nAverage Test ROC AUC Score per Model:")
+    summary_stats = results_df.groupby('model_name')['roc_auc_score'].agg(['mean', 'std'])
+    for index, row in summary_stats.iterrows():
+        print(f"{index}: {row['mean']:.3f} +/- {row['std']:.3f}")
 
 # Save CSV
 results_df.to_csv('nested_cv_results_SVM.csv', index=False)
@@ -231,8 +244,7 @@ with open('model_scores_SVM.pkl', 'wb') as f:
     pickle.dump(all_model_scores, f)
 
 print("\nScores per model:")
-print(all_model_scores)
+for model, scores in all_model_scores.items():
+    print(f"{model}: {[f'{s:.4f}' for s in scores]}")
 
 print("\n=== Processing Complete ===")
-
-#%%
