@@ -24,8 +24,8 @@ from fs_RFE import perform_rfe
 C_VALUES = [0.01, 0.02, 0.03]
 K_VALUES = [10, 15, 20]
 
-C_VALUES = [0.02]
-K_VALUES = [15]
+# C_VALUES = [0.02]
+# K_VALUES = [15]
 
 # Build a list of all Feature Selection configurations to test
 fs_configs = [{'method': 'lasso', 'param': c} for c in C_VALUES] + \
@@ -42,13 +42,13 @@ xgb_param_grid = {
     'colsample_bytree': [0.6, 0.8, 1.0]  # Fraction of features used per tree
 }
 
-xgb_param_grid = {
-   'n_estimators': [100],
-   'max_depth': [4],     
-   'learning_rate': [0.05],
-   'subsample': [0.8],      
-   'colsample_bytree': [0.8]
-}
+# xgb_param_grid = {
+#    'n_estimators': [100],
+#    'max_depth': [4],     
+#    'learning_rate': [0.05],
+#    'subsample': [0.8],      
+#    'colsample_bytree': [0.8]
+# }
 
 xgb_keys, xgb_values = zip(*xgb_param_grid.items())
 xgb_param_combinations = [dict(zip(xgb_keys, v)) for v in itertools.product(*xgb_values)]
@@ -252,3 +252,5 @@ for model, scores in all_model_scores.items():
     print(f"{model}: {[f'{s:.4f}' for s in scores]}")
 
 print("\n=== Processing Complete ===")
+
+#%% 

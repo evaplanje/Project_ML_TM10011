@@ -23,8 +23,8 @@ from fs_RFE import perform_rfe
 C_VALUES = [0.01, 0.02, 0.03]
 K_VALUES = [10, 15, 20]
 
-C_VALUES = [0.02]
-K_VALUES = [15]
+# C_VALUES = [0.02]
+# K_VALUES = [15]
 
 fs_configs = (
     [{'method': 'lasso', 'param': c} for c in C_VALUES] +
@@ -41,13 +41,13 @@ rf_param_grid = {
     'max_features': ['sqrt', 'log2', 0.3]  
 }
 
-rf_param_grid = {
-    'n_estimators': [200],
-    'max_depth': [5],
-    'min_samples_split': [6],
-    'min_samples_leaf': [3],
-    'max_features': ['sqrt']
-}
+# rf_param_grid = {
+#     'n_estimators': [200],
+#     'max_depth': [5],
+#     'min_samples_split': [6],
+#     'min_samples_leaf': [3],
+#     'max_features': ['sqrt']
+# }
 
 # Create combinations
 rf_keys, rf_values = zip(*rf_param_grid.items())
