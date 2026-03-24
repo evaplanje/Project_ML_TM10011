@@ -5,11 +5,11 @@ fold,model_name,fs_method,best_fs_param,best_xgb_params,n_features_selected,roc_
 1,RFE_XGB,rfe,15.0,"{'n_estimators': 100, 'max_depth': 4, 'learning_rate': 0.05, 'subsample': 0.8, 'colsample_bytree': 0.8}",15,0.575,0.525
 2,LASSO_XGB,lasso,0.02,"{'n_estimators': 100, 'max_depth': 4, 'learning_rate': 0.05, 'subsample': 0.8, 'colsample_bytree': 0.8}",23,0.5789473684210527,0.5384615384615384
 2,MRMR_XGB,mrmr,15.0,"{'n_estimators': 100, 'max_depth': 4, 'learning_rate': 0.05, 'subsample': 0.8, 'colsample_bytree': 0.8}",15,0.7526315789473683,0.6410256410256411
-2,MI_XGB,mi,15.0,"{'n_estimators': 100, 'max_depth': 4, 'learning_rate': 0.05, 'subsample': 0.8, 'colsample_bytree': 0.8}",15,0.7736842105263158,0.6666666666666666
+2,MI_XGB,mi,15.0,"{'n_estimators': 100, 'max_depth': 4, 'learning_rate': 0.05, 'subsample': 0.8, 'colsample_bytree': 0.8}",15,0.7631578947368421,0.6923076923076923
 2,RFE_XGB,rfe,15.0,"{'n_estimators': 100, 'max_depth': 4, 'learning_rate': 0.05, 'subsample': 0.8, 'colsample_bytree': 0.8}",15,0.6973684210526315,0.6666666666666666
 3,LASSO_XGB,lasso,0.02,"{'n_estimators': 100, 'max_depth': 4, 'learning_rate': 0.05, 'subsample': 0.8, 'colsample_bytree': 0.8}",21,0.6394736842105263,0.5897435897435898
 3,MRMR_XGB,mrmr,15.0,"{'n_estimators': 100, 'max_depth': 4, 'learning_rate': 0.05, 'subsample': 0.8, 'colsample_bytree': 0.8}",15,0.5815789473684211,0.6410256410256411
-3,MI_XGB,mi,15.0,"{'n_estimators': 100, 'max_depth': 4, 'learning_rate': 0.05, 'subsample': 0.8, 'colsample_bytree': 0.8}",15,0.6657894736842105,0.6410256410256411
+3,MI_XGB,mi,15.0,"{'n_estimators': 100, 'max_depth': 4, 'learning_rate': 0.05, 'subsample': 0.8, 'colsample_bytree': 0.8}",15,0.7105263157894737,0.6410256410256411
 3,RFE_XGB,rfe,15.0,"{'n_estimators': 100, 'max_depth': 4, 'learning_rate': 0.05, 'subsample': 0.8, 'colsample_bytree': 0.8}",15,0.655263157894737,0.6410256410256411
 4,LASSO_XGB,lasso,0.02,"{'n_estimators': 100, 'max_depth': 4, 'learning_rate': 0.05, 'subsample': 0.8, 'colsample_bytree': 0.8}",19,0.5394736842105263,0.5384615384615384
 4,MRMR_XGB,mrmr,15.0,"{'n_estimators': 100, 'max_depth': 4, 'learning_rate': 0.05, 'subsample': 0.8, 'colsample_bytree': 0.8}",15,0.5078947368421052,0.5384615384615384

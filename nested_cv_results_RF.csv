@@ -5,11 +5,11 @@ fold,model_name,fs_method,best_fs_param,best_rf_params,n_features_selected,roc_a
 1,RFE_RF,rfe,15.0,"{'n_estimators': 200, 'max_depth': 5, 'min_samples_split': 6, 'min_samples_leaf': 3, 'max_features': 'sqrt'}",15,0.6224999999999999,0.6
 2,LASSO_RF,lasso,0.02,"{'n_estimators': 200, 'max_depth': 5, 'min_samples_split': 6, 'min_samples_leaf': 3, 'max_features': 'sqrt'}",23,0.6578947368421053,0.6410256410256411
 2,MRMR_RF,mrmr,15.0,"{'n_estimators': 200, 'max_depth': 5, 'min_samples_split': 6, 'min_samples_leaf': 3, 'max_features': 'sqrt'}",15,0.7394736842105263,0.6410256410256411
-2,MI_RF,mi,15.0,"{'n_estimators': 200, 'max_depth': 5, 'min_samples_split': 6, 'min_samples_leaf': 3, 'max_features': 'sqrt'}",15,0.7552631578947369,0.6666666666666666
+2,MI_RF,mi,15.0,"{'n_estimators': 200, 'max_depth': 5, 'min_samples_split': 6, 'min_samples_leaf': 3, 'max_features': 'sqrt'}",15,0.7394736842105264,0.6923076923076923
 2,RFE_RF,rfe,15.0,"{'n_estimators': 200, 'max_depth': 5, 'min_samples_split': 6, 'min_samples_leaf': 3, 'max_features': 'sqrt'}",15,0.6710526315789473,0.6153846153846154
 3,LASSO_RF,lasso,0.02,"{'n_estimators': 200, 'max_depth': 5, 'min_samples_split': 6, 'min_samples_leaf': 3, 'max_features': 'sqrt'}",21,0.6526315789473685,0.5897435897435898
 3,MRMR_RF,mrmr,15.0,"{'n_estimators': 200, 'max_depth': 5, 'min_samples_split': 6, 'min_samples_leaf': 3, 'max_features': 'sqrt'}",15,0.6236842105263157,0.6666666666666666
-3,MI_RF,mi,15.0,"{'n_estimators': 200, 'max_depth': 5, 'min_samples_split': 6, 'min_samples_leaf': 3, 'max_features': 'sqrt'}",15,0.6894736842105263,0.6153846153846154
+3,MI_RF,mi,15.0,"{'n_estimators': 200, 'max_depth': 5, 'min_samples_split': 6, 'min_samples_leaf': 3, 'max_features': 'sqrt'}",15,0.736842105263158,0.6666666666666666
 3,RFE_RF,rfe,15.0,"{'n_estimators': 200, 'max_depth': 5, 'min_samples_split': 6, 'min_samples_leaf': 3, 'max_features': 'sqrt'}",15,0.6789473684210527,0.6666666666666666
 4,LASSO_RF,lasso,0.02,"{'n_estimators': 200, 'max_depth': 5, 'min_samples_split': 6, 'min_samples_leaf': 3, 'max_features': 'sqrt'}",19,0.6026315789473684,0.5897435897435898
 4,MRMR_RF,mrmr,15.0,"{'n_estimators': 200, 'max_depth': 5, 'min_samples_split': 6, 'min_samples_leaf': 3, 'max_features': 'sqrt'}",15,0.5526315789473685,0.5384615384615384
