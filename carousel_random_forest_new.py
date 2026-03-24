@@ -219,7 +219,7 @@ for outer_fold, (train_idx, test_idx) in enumerate(outer_cv.split(X, y)):
             'best_fs_param': best_fs_config['param'],
             'best_rf_params': best_rf_params,
             'n_features_selected': len(final_features),
-            'roc_auc_score': outer_score_auc
+            'roc_auc_score': outer_score_auc,
             'accuracy_score': outer_score_acc
 
 })
