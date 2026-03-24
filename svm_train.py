@@ -4,14 +4,14 @@ import itertools
 import pickle
 import numpy as np
 import pandas as pd
-from xgboost import XGBClassifier
+from sklearn.svm import SVC
 from sklearn.model_selection import StratifiedKFold, GridSearchCV
 from sklearn.preprocessing import RobustScaler, LabelEncoder
 from sklearn.metrics import roc_auc_score
 from sklearn.metrics import accuracy_score
 
 from load_data import load_data, split_pd
-from preprocessing import remove_zero_variance_features, remove_highly_correlated_features, apply_normalization
+from preprocessing import apply_normalization, remove_zero_variance_features, remove_highly_correlated_features
 
 from fs_lasso import fs_lasso
 from fs_mRMR import fs_mrmr
@@ -43,19 +43,19 @@ except FileNotFoundError:
 
 # %%
 # 2. Hyperparameter grid en instellingen
-xgb_param_grid = {
-    'n_estimators': [50, 100, 200],      # Aantal bomen
-    'max_depth': [3, 4, 5],              # Ondiepe bomen tegen overfitting
-    'learning_rate': [0.01, 0.05, 0.1],  # Stapgrootte
-    'subsample': [0.6, 0.8, 1.0],        # Fractie samples per boom
-    'colsample_bytree': [0.6, 0.8, 1.0]  # Fractie features per boom
+SVM_param_grid = {
+    'C': [0.1, 1, 10],
+    'kernel': ['linear', 'rbf'],
+    'gamma': ['scale', 'auto']
 }
 
-base_classifier = XGBClassifier(
-    use_label_encoder=False,
-    eval_metric='logloss',
-    random_state=42
-)
+base_classifier = SVC(
+    random_state= 7,
+    probability=True
+    )
+    # use_label_encoder=False,
+    # eval_metric='logloss',
+    # random_state=42
 
 # Cross-validation setup
 outer_cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
@@ -89,40 +89,40 @@ for fold, (train_index, val_index) in enumerate(outer_cv.split(X_full, y_full), 
 #Kies hier een andere versie afhankelijk van je feature selectie methode
 #_______________________________________________________________
    # C. Feature Selection: mRMR (ALLEEN fitten op X_tr en y_tr)
-    num_features_to_select = 15
+    # num_features_to_select = 15
     
-    # DE FIX: Maak van de numpy array (y_tr) een Pandas Series met de index van X_tr_filtered
-    y_tr_series = pd.Series(y_tr, index=X_tr_filtered.index)
+    # # DE FIX: Maak van de numpy array (y_tr) een Pandas Series met de index van X_tr_filtered
+    # y_tr_series = pd.Series(y_tr, index=X_tr_filtered.index)
     
-    # Gebruik nu y_tr_series voor mRMR in plaats van y_tr
-    # (Check even of jouw fs_mrmr functie direct een lijst teruggeeft of een tuple; 
-    # bij fs_mutualinformation gebruikte je nog [0] erachter, bij mrmr is dat vaak niet nodig)
-    selected_features_mrmr = fs_mrmr(X_tr_filtered, y_tr_series, num_features_to_select)[0]
+    # # Gebruik nu y_tr_series voor mRMR in plaats van y_tr
+    # # (Check even of jouw fs_mrmr functie direct een lijst teruggeeft of een tuple; 
+    # # bij fs_mutualinformation gebruikte je nog [0] erachter, bij mrmr is dat vaak niet nodig)
+    # selected_features_mrmr = fs_mrmr(X_tr_filtered, y_tr_series, num_features_to_select)[0]
     
-    # Pas de definitieve selectie toe op zowel train als validatie
-    X_tr_final = X_tr_filtered[selected_features_mrmr]
-    X_val_final = X_val_filtered[selected_features_mrmr]
+    # # Pas de definitieve selectie toe op zowel train als validatie
+    # X_tr_final = X_tr_filtered[selected_features_mrmr]
+    # X_val_final = X_val_filtered[selected_features_mrmr]
 #________________________________________________________________
     # C. Feature Selection: LASSO met vooraf getunede penalty score
     
-    # y_tr_series = pd.Series(y_tr, index=X_tr_filtered.index)
-    # # Vul hier jouw getunede penalty score in (bijv. alpha=0.05 of C=0.05, 
-    # # afhankelijk van hoe jouw specifieke fs_lasso functie is geschreven)
-    # getunede_penalty = 0.02
+    y_tr_series = pd.Series(y_tr, index=X_tr_filtered.index)
+    # Vul hier jouw getunede penalty score in (bijv. alpha=0.05 of C=0.05, 
+    # afhankelijk van hoe jouw specifieke fs_lasso functie is geschreven)
+    getunede_penalty = 0.02
 
-    # X_tr_final= fs_lasso(X_tr_filtered, y_tr_series, getunede_penalty)[0]
+    X_tr_final= fs_lasso(X_tr_filtered, y_tr_series, getunede_penalty)[0]
     
-    # # Omdat lasso_output[0] waarschijnlijk getallen/coëfficiënten bevat, 
-    # # maken we er een boolean mask van (True als het getal NIET 0 is)
+    # Omdat lasso_output[0] waarschijnlijk getallen/coëfficiënten bevat, 
+    # maken we er een boolean mask van (True als het getal NIET 0 is)
     
-    # # Roep fs_lasso aan met de penalty en pak [0] voor de lijst met namen
-    # selected_features_lasso = X_tr_final.columns.tolist()
+    # Roep fs_lasso aan met de penalty en pak [0] voor de lijst met namen
+    selected_features_lasso = X_tr_final.columns.tolist()
     
-    # # Check even hoeveel features de LASSO met deze penalty heeft overgelaten
-    # print(f"Aantal features geselecteerd door LASSO: {len(selected_features_lasso)}")
+    # Check even hoeveel features de LASSO met deze penalty heeft overgelaten
+    print(f"Aantal features geselecteerd door LASSO: {len(selected_features_lasso)}")
     
-    # # Pas de definitieve selectie toe op zowel train als validatie
-    # X_val_final = X_val_filtered[selected_features_lasso]
+    # Pas de definitieve selectie toe op zowel train als validatie
+    X_val_final = X_val_filtered[selected_features_lasso]
 #_______________________________________________________________
 
 ## C. Feature Selection: RFE (Recursive Feature Elimination)
@@ -159,7 +159,7 @@ for fold, (train_index, val_index) in enumerate(outer_cv.split(X_full, y_full), 
     # D. Hyperparameters tunen (Inner CV op X_tr_final)
     grid_search = GridSearchCV(
         estimator=base_classifier,
-        param_grid=xgb_param_grid,
+        param_grid= SVM_param_grid,
         cv=inner_cv,
         scoring='roc_auc',
         n_jobs=-1,  # Gebruik alle CPU cores
@@ -207,7 +207,7 @@ results_df = pd.DataFrame({
 
 # 2. Kies een duidelijke bestandsnaam
 #PAS HIER NOG DE NAAM AAN ALS JE EEN ANDERE FEATURE SELECTIE METHODE GEBRUIKT 
-pickle_filename = 'train results XGboost mrmr.pkl'
+pickle_filename = 'train_results_SVM_LASSO.pkl'
 
 # 3. Sla het op als pickle!
 results_df.to_pickle(pickle_filename)

@@ -24,8 +24,8 @@ from fs_RFE import perform_rfe
 C_VALUES = [0.01, 0.02, 0.03]
 K_VALUES = [10, 15, 20]
 
-C_VALUES = [0.02]
-K_VALUES = [15]
+# C_VALUES = [0.02]
+# K_VALUES = [15]
 
 # Build a list of all Feature Selection configurations to test
 fs_configs = [{'method': 'lasso', 'param': c} for c in C_VALUES] + \
@@ -42,13 +42,13 @@ xgb_param_grid = {
     'colsample_bytree': [0.6, 0.8, 1.0]  # Fraction of features used per tree
 }
 
-xgb_param_grid = {
-   'n_estimators': [100],
-   'max_depth': [4],     
-   'learning_rate': [0.05],
-   'subsample': [0.8],      
-   'colsample_bytree': [0.8]
-}
+# xgb_param_grid = {
+#    'n_estimators': [100],
+#    'max_depth': [4],     
+#    'learning_rate': [0.05],
+#    'subsample': [0.8],      
+#    'colsample_bytree': [0.8]
+# }
 
 xgb_keys, xgb_values = zip(*xgb_param_grid.items())
 xgb_param_combinations = [dict(zip(xgb_keys, v)) for v in itertools.product(*xgb_values)]
@@ -57,9 +57,8 @@ xgb_param_combinations = [dict(zip(xgb_keys, v)) for v in itertools.product(*xgb
 
 GIST_data = load_data('GIST_radiomicFeatures.csv')
 GIST_train, GIST_test, y_train, y_test = split_pd(GIST_data, False)
-preproc_GIST_train, _ = remove_zero_variance_features(GIST_train, show_details=False)
 
-X = preproc_GIST_train 
+X = GIST_train 
 y = y_train.values 
 
 label_encoder = LabelEncoder()
@@ -103,13 +102,17 @@ for outer_fold, (train_idx, test_idx) in enumerate(outer_cv.split(X, y)):
                 y_train_inner = pd.Series(y_train_outer[inner_train_idx], index=X_train_inner.index)
                 y_val_inner = pd.Series(y_train_outer[inner_val_idx], index=X_val_inner.index)
 
+                # Variance & Correlation removal INSIDE CV
+                X_train_inner, kept_var_features_inner = remove_zero_variance_features(X_train_inner, show_details=False)
+                X_val_inner = X_val_inner[kept_var_features_inner] # Apply var filter to val
+
                 X_train_inner, kept_features = remove_highly_correlated_features(
                     X_train_inner,
                     correlation_threshold=0.95,
                     show_details=False
                 )
 
-                X_val_inner = X_val_inner[kept_features]
+                X_val_inner = X_val_inner[kept_features] # Apply corr filter to val
 
                 # 1. Apply Feature Selection
                 if fs_config['method'] == 'lasso':
@@ -155,14 +158,17 @@ for outer_fold, (train_idx, test_idx) in enumerate(outer_cv.split(X, y)):
 
     # --- OUTER LOOP: Evaluate the Best Model Pipeline ---
     
-        # --- Correlation filtering ---
+    # --- Correlation filtering ---
+    X_train_outer_var, kept_var_features_outer = remove_zero_variance_features(X_train_outer_scaled, show_details=False)
+    X_test_outer_filtered = X_test_outer_scaled[kept_var_features_outer] # Apply var filter to test
+
     X_train_outer_corr, kept_features_outer = remove_highly_correlated_features(
-        X_train_outer_scaled,
+        X_train_outer_var,
         correlation_threshold=0.95,
         show_details=False
     )
 
-    X_test_outer_corr = X_test_outer_scaled[kept_features_outer]
+    X_test_outer_corr = X_test_outer_filtered[kept_features_outer] # Apply corr filter to test
     y_train_outer_series = pd.Series(y_train_outer, index=X_train_outer_corr.index)
 
     for method, result in best_results.items():

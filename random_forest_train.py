@@ -4,6 +4,7 @@ import itertools
 import pickle
 import numpy as np
 import pandas as pd
+from sklearn.ensemble import RandomForestClassifier
 from xgboost import XGBClassifier
 from sklearn.model_selection import StratifiedKFold, GridSearchCV
 from sklearn.preprocessing import RobustScaler, LabelEncoder
@@ -11,7 +12,7 @@ from sklearn.metrics import roc_auc_score
 from sklearn.metrics import accuracy_score
 
 from load_data import load_data, split_pd
-from preprocessing import remove_zero_variance_features, remove_highly_correlated_features, apply_normalization
+from preprocessing import apply_normalization, remove_zero_variance_features, remove_highly_correlated_features, scaler
 
 from fs_lasso import fs_lasso
 from fs_mRMR import fs_mrmr
@@ -43,19 +44,24 @@ except FileNotFoundError:
 
 # %%
 # 2. Hyperparameter grid en instellingen
-xgb_param_grid = {
-    'n_estimators': [50, 100, 200],      # Aantal bomen
-    'max_depth': [3, 4, 5],              # Ondiepe bomen tegen overfitting
-    'learning_rate': [0.01, 0.05, 0.1],  # Stapgrootte
-    'subsample': [0.6, 0.8, 1.0],        # Fractie samples per boom
-    'colsample_bytree': [0.6, 0.8, 1.0]  # Fractie features per boom
+rf_param_grid = {
+    'n_estimators': [100, 200, 300],       
+    'max_depth': [3, 5, 7],      
+    'min_samples_split': [4, 6, 10],     
+    'min_samples_leaf': [2, 5, 10],       
+    'max_features': ['sqrt', 'log2', 0.3]  
 }
 
-base_classifier = XGBClassifier(
-    use_label_encoder=False,
-    eval_metric='logloss',
+base_classifier = RandomForestClassifier(
     random_state=42
 )
+
+
+
+#     use_label_encoder=False,
+#     eval_metric='logloss',
+#     random_state=42
+# )
 
 # Cross-validation setup
 outer_cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
@@ -89,19 +95,19 @@ for fold, (train_index, val_index) in enumerate(outer_cv.split(X_full, y_full), 
 #Kies hier een andere versie afhankelijk van je feature selectie methode
 #_______________________________________________________________
    # C. Feature Selection: mRMR (ALLEEN fitten op X_tr en y_tr)
-    num_features_to_select = 15
+    # num_features_to_select = 15
     
-    # DE FIX: Maak van de numpy array (y_tr) een Pandas Series met de index van X_tr_filtered
-    y_tr_series = pd.Series(y_tr, index=X_tr_filtered.index)
+    # # DE FIX: Maak van de numpy array (y_tr) een Pandas Series met de index van X_tr_filtered
+    # y_tr_series = pd.Series(y_tr, index=X_tr_filtered.index)
     
-    # Gebruik nu y_tr_series voor mRMR in plaats van y_tr
-    # (Check even of jouw fs_mrmr functie direct een lijst teruggeeft of een tuple; 
-    # bij fs_mutualinformation gebruikte je nog [0] erachter, bij mrmr is dat vaak niet nodig)
-    selected_features_mrmr = fs_mrmr(X_tr_filtered, y_tr_series, num_features_to_select)[0]
+    # # Gebruik nu y_tr_series voor mRMR in plaats van y_tr
+    # # (Check even of jouw fs_mrmr functie direct een lijst teruggeeft of een tuple; 
+    # # bij fs_mutualinformation gebruikte je nog [0] erachter, bij mrmr is dat vaak niet nodig)
+    # selected_features_mrmr = fs_mrmr(X_tr_filtered, y_tr_series, num_features_to_select)[0]
     
-    # Pas de definitieve selectie toe op zowel train als validatie
-    X_tr_final = X_tr_filtered[selected_features_mrmr]
-    X_val_final = X_val_filtered[selected_features_mrmr]
+    # # Pas de definitieve selectie toe op zowel train als validatie
+    # X_tr_final = X_tr_filtered[selected_features_mrmr]
+    # X_val_final = X_val_filtered[selected_features_mrmr]
 #________________________________________________________________
     # C. Feature Selection: LASSO met vooraf getunede penalty score
     
@@ -127,17 +133,17 @@ for fold, (train_index, val_index) in enumerate(outer_cv.split(X_full, y_full), 
 
 ## C. Feature Selection: RFE (Recursive Feature Elimination)
 # C. Feature Selection: RFE (Recursive Feature Elimination)
-    # y_tr_series = pd.Series(y_tr, index=X_tr_filtered.index)
-    # aantal_features_rfe = 15  
+    y_tr_series = pd.Series(y_tr, index=X_tr_filtered.index)
+    aantal_features_rfe = 15  
     
-    # # DE FIX: We pakken [1] aan het einde, omdat daar jouw lijst met features zit!
-    # selected_features_rfe = perform_rfe(X_tr_filtered, y_tr_series, aantal_features_rfe)[1]
+    # DE FIX: We pakken [1] aan het einde, omdat daar jouw lijst met features zit!
+    selected_features_rfe = perform_rfe(X_tr_filtered, y_tr_series, aantal_features_rfe)[1]
     
-    # print(f"Aantal features geselecteerd door RFE: {len(selected_features_rfe)}")
+    print(f"Aantal features geselecteerd door RFE: {len(selected_features_rfe)}")
     
-    # # Pas de definitieve selectie toe op zowel train als validatie
-    # X_tr_final = X_tr_filtered[selected_features_rfe]
-    # X_val_final = X_val_filtered[selected_features_rfe]
+    # Pas de definitieve selectie toe op zowel train als validatie
+    X_tr_final = X_tr_filtered[selected_features_rfe]
+    X_val_final = X_val_filtered[selected_features_rfe]
 #_______________________________________________________________
 # C. Feature Selection: Mutual Information (ZONDER data leakage)
     # y_tr_series = pd.Series(y_tr, index=X_tr_filtered.index)
@@ -159,7 +165,7 @@ for fold, (train_index, val_index) in enumerate(outer_cv.split(X_full, y_full), 
     # D. Hyperparameters tunen (Inner CV op X_tr_final)
     grid_search = GridSearchCV(
         estimator=base_classifier,
-        param_grid=xgb_param_grid,
+        param_grid=rf_param_grid,
         cv=inner_cv,
         scoring='roc_auc',
         n_jobs=-1,  # Gebruik alle CPU cores
@@ -207,7 +213,7 @@ results_df = pd.DataFrame({
 
 # 2. Kies een duidelijke bestandsnaam
 #PAS HIER NOG DE NAAM AAN ALS JE EEN ANDERE FEATURE SELECTIE METHODE GEBRUIKT 
-pickle_filename = 'train results XGboost mrmr.pkl'
+pickle_filename = 'nested_cv_results_XGB_RFE.pkl'
 
 # 3. Sla het op als pickle!
 results_df.to_pickle(pickle_filename)

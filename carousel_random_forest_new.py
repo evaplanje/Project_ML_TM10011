@@ -23,8 +23,8 @@ from fs_RFE import perform_rfe
 C_VALUES = [0.01, 0.02, 0.03]
 K_VALUES = [10, 15, 20]
 
-C_VALUES = [0.02]
-K_VALUES = [15]
+# C_VALUES = [0.02]
+# K_VALUES = [15]
 
 fs_configs = (
     [{'method': 'lasso', 'param': c} for c in C_VALUES] +
@@ -41,13 +41,13 @@ rf_param_grid = {
     'max_features': ['sqrt', 'log2', 0.3]  
 }
 
-rf_param_grid = {
-    'n_estimators': [200],
-    'max_depth': [5],
-    'min_samples_split': [6],
-    'min_samples_leaf': [3],
-    'max_features': ['sqrt']
-}
+# rf_param_grid = {
+#     'n_estimators': [200],
+#     'max_depth': [5],
+#     'min_samples_split': [6],
+#     'min_samples_leaf': [3],
+#     'max_features': ['sqrt']
+# }
 
 # Create combinations
 rf_keys, rf_values = zip(*rf_param_grid.items())
@@ -59,9 +59,8 @@ rf_param_combinations = [dict(zip(rf_keys, v)) for v in itertools.product(*rf_va
 GIST_data = load_data('GIST_radiomicFeatures.csv')
 GIST_train, GIST_test, y_train, y_test = split_pd(GIST_data, False)
 
-preproc_GIST_train, _ = remove_zero_variance_features(GIST_train, show_details=False)
 
-X = preproc_GIST_train
+X = GIST_train
 y = y_train.values
 
 
@@ -117,12 +116,16 @@ for outer_fold, (train_idx, test_idx) in enumerate(outer_cv.split(X, y)):
                 y_val_inner = pd.Series(y_train_outer[inner_val_idx], index=X_val_inner.index)
 
                 # Remove Highly Correlated Features (Fit on inner train, apply to inner val)
+                X_train_inner, kept_var_features_inner = remove_zero_variance_features(X_train_inner, show_details=False)
+                X_val_inner = X_val_inner[kept_var_features_inner] # Apply var filter to val
+
                 X_train_inner, kept_features = remove_highly_correlated_features(
                     X_train_inner,
                     correlation_threshold=0.95,
                     show_details=False
                 )
-                X_val_inner = X_val_inner[kept_features]
+                
+                X_val_inner = X_val_inner[kept_features] # Apply corr filter to val
 
                 # Execute Feature Selection
                 if fs_config['method'] == 'lasso':
@@ -171,12 +174,19 @@ for outer_fold, (train_idx, test_idx) in enumerate(outer_cv.split(X, y)):
     # ================= OUTER EVALUATION (Model Validation) =================
     
     # Process outer training data with correlation removal
+    X_train_outer_corr, kept_var_features = remove_zero_variance_features(X_train_outer_scaled, show_details=False)
+    
+    # Apply the variance filter to the test set FIRST
+    X_test_outer_filtered = X_test_outer_scaled[kept_var_features]
+
     X_train_outer_corr, kept_features_outer = remove_highly_correlated_features(
-        X_train_outer_scaled,
+        X_train_outer_corr,
         correlation_threshold=0.95,
         show_details=False
     )
-    X_test_outer_corr = X_test_outer_scaled[kept_features_outer]
+    
+    # Now apply the correlation filter to the test set
+    X_test_outer_corr = X_test_outer_filtered[kept_features_outer]
     y_train_outer_series = pd.Series(y_train_outer, index=X_train_outer_corr.index)
 
     # Evaluate the best configuration for EACH feature selection method
