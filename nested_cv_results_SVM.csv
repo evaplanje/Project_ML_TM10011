@@ -5,11 +5,11 @@ fold,model_name,fs_method,best_fs_param,best_svm_params,n_features_selected,roc_
 1,RFE_SVM,rfe,15.0,"{'C': 1, 'kernel': 'rbf', 'gamma': 'auto'}",15,0.635,0.575
 2,LASSO_SVM,lasso,0.02,"{'C': 1, 'kernel': 'rbf', 'gamma': 'auto'}",23,0.6302631578947369,0.6153846153846154
 2,MRMR_SVM,mrmr,15.0,"{'C': 1, 'kernel': 'rbf', 'gamma': 'auto'}",15,0.731578947368421,0.6153846153846154
-2,MI_SVM,mi,15.0,"{'C': 1, 'kernel': 'rbf', 'gamma': 'auto'}",15,0.7078947368421052,0.6153846153846154
+2,MI_SVM,mi,15.0,"{'C': 1, 'kernel': 'rbf', 'gamma': 'auto'}",15,0.6342105263157896,0.5897435897435898
 2,RFE_SVM,rfe,15.0,"{'C': 1, 'kernel': 'rbf', 'gamma': 'auto'}",15,0.6342105263157896,0.5641025641025641
 3,LASSO_SVM,lasso,0.02,"{'C': 1, 'kernel': 'rbf', 'gamma': 'auto'}",21,0.46842105263157907,0.46153846153846156
 3,MRMR_SVM,mrmr,15.0,"{'C': 1, 'kernel': 'rbf', 'gamma': 'auto'}",15,0.6210526315789473,0.5128205128205128
-3,MI_SVM,mi,15.0,"{'C': 1, 'kernel': 'rbf', 'gamma': 'auto'}",15,0.7473684210526316,0.6410256410256411
+3,MI_SVM,mi,15.0,"{'C': 1, 'kernel': 'rbf', 'gamma': 'auto'}",15,0.7210526315789473,0.6666666666666666
 3,RFE_SVM,rfe,15.0,"{'C': 1, 'kernel': 'rbf', 'gamma': 'auto'}",15,0.6684210526315789,0.6153846153846154
 4,LASSO_SVM,lasso,0.02,"{'C': 1, 'kernel': 'rbf', 'gamma': 'auto'}",19,0.6263157894736842,0.5897435897435898
 4,MRMR_SVM,mrmr,15.0,"{'C': 1, 'kernel': 'rbf', 'gamma': 'auto'}",15,0.5105263157894737,0.5641025641025641
