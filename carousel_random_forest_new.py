@@ -146,7 +146,7 @@ for outer_fold, (train_idx, test_idx) in enumerate(outer_cv.split(X, y)):
                 X_val_sel = X_val_inner[selected_features]
 
                 # Train Random Forest and evaluate
-                rf = RandomForestClassifier(**rf_params, n_jobs=-1)
+                rf = RandomForestClassifier(**rf_params, random_state=7, n_jobs=-1)
                 rf.fit(X_train_sel, y_train_inner)
                 
                 probs = rf.predict_proba(X_val_sel)[:, 1]
@@ -204,7 +204,7 @@ for outer_fold, (train_idx, test_idx) in enumerate(outer_cv.split(X, y)):
             outer_score_auc = 0.5
             outer_score_acc = 0
         else:
-            final_rf = RandomForestClassifier(**best_rf_params, n_jobs=-1)
+            final_rf = RandomForestClassifier(**best_rf_params, random_state=7, n_jobs=-1)
             final_rf.fit(X_train_outer_corr[final_features], y_train_outer)
             
             probs = final_rf.predict_proba(X_test_outer_corr[final_features])[:, 1]
@@ -219,7 +219,7 @@ for outer_fold, (train_idx, test_idx) in enumerate(outer_cv.split(X, y)):
             'best_fs_param': best_fs_config['param'],
             'best_rf_params': best_rf_params,
             'n_features_selected': len(final_features),
-            'roc_auc_score': outer_score_auc
+            'roc_auc_score': outer_score_auc,
             'accuracy_score': outer_score_acc
 
 })

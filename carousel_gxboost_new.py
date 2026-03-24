@@ -131,7 +131,7 @@ for outer_fold, (train_idx, test_idx) in enumerate(outer_cv.split(X, y)):
                 X_val_inner_sel = X_val_inner[selected_features]
                 
                 # 2. Train XGBoost
-                xgb_model = XGBClassifier(**xgb_params, n_jobs=-1, use_label_encoder=False, eval_metric='logloss')
+                xgb_model = XGBClassifier(**xgb_params, random_state = 7, n_jobs=-1, use_label_encoder=False, eval_metric='logloss')
                 xgb_model.fit(X_train_inner_sel, y_train_inner)
                 
                 probs = xgb_model.predict_proba(X_val_inner_sel)[:, 1]
@@ -190,7 +190,7 @@ for outer_fold, (train_idx, test_idx) in enumerate(outer_cv.split(X, y)):
             outer_score_acc = 0.0
 
         else:
-            final_xgb = XGBClassifier(**best_xgb_params, n_jobs=-1, eval_metric='logloss')
+            final_xgb = XGBClassifier(**best_xgb_params,random_state = 7, n_jobs=-1, eval_metric='logloss')
             final_xgb.fit(X_train_outer_corr[final_features], y_train_outer)
 
             probs = final_xgb.predict_proba(X_test_outer_corr[final_features])[:, 1]

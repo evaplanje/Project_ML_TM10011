@@ -137,7 +137,7 @@ for outer_fold, (train_idx, test_idx) in enumerate(outer_cv.split(X, y)):
                 X_val_sel = X_val_inner[selected_features]
 
                 # Train SVM
-                svm = SVC(**svm_params, probability=True)
+                svm = SVC(**svm_params, random_state= 7 ,probability=True)
                 svm.fit(X_train_sel, y_train_inner)
 
                 probs = svm.predict_proba(X_val_sel)[:, 1]
@@ -195,7 +195,7 @@ for outer_fold, (train_idx, test_idx) in enumerate(outer_cv.split(X, y)):
             outer_score_acc = 0
 
         else:
-            final_svm = SVC(**best_svm_params, probability=True)
+            final_svm = SVC(**best_svm_params, random_state= 7,  probability=True)
             final_svm.fit(X_train_outer_corr[final_features], y_train_outer)
 
             probs = final_svm.predict_proba(X_test_outer_corr[final_features])[:, 1]
@@ -217,7 +217,6 @@ for outer_fold, (train_idx, test_idx) in enumerate(outer_cv.split(X, y)):
         })
 
 # ---------------- RESULTS ----------------
-#%%
 results_df = pd.DataFrame(outer_results)
 
 print("\n" + "="*20 + " RESULTS " + "="*20)
