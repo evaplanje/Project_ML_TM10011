@@ -4,6 +4,7 @@ import itertools
 import pickle
 import numpy as np
 import pandas as pd
+from sklearn.ensemble import RandomForestClassifier
 from xgboost import XGBClassifier
 from sklearn.model_selection import StratifiedKFold, GridSearchCV
 from sklearn.preprocessing import RobustScaler, LabelEncoder
@@ -11,7 +12,7 @@ from sklearn.metrics import roc_auc_score
 from sklearn.metrics import accuracy_score
 
 from load_data import load_data, split_pd
-from preprocessing import remove_zero_variance_features, remove_highly_correlated_features
+from preprocessing import apply_normalization, remove_zero_variance_features, remove_highly_correlated_features, scaler
 
 from fs_lasso import fs_lasso
 from fs_mRMR import fs_mrmr
@@ -24,7 +25,8 @@ GIST_data = load_data('GIST_radiomicFeatures.csv')
 GIST_train, GIST_test, y_train, y_test = split_pd(GIST_data, False)
 
 # Zero variance mag buiten de loop (het kijkt alleen naar de X-waarden, niet naar y)
-preproc_GIST_train, _ = remove_zero_variance_features(GIST_train, show_details=False)
+normalized_GIST_train, scaler = apply_normalization(GIST_train)
+preproc_GIST_train, _ = remove_zero_variance_features(normalized_GIST_train, show_details=False)
 
 X_full = preproc_GIST_train 
 y_full = y_train.values 
@@ -42,19 +44,24 @@ except FileNotFoundError:
 
 # %%
 # 2. Hyperparameter grid en instellingen
-xgb_param_grid = {
-    'n_estimators': [50, 100, 200],      # Aantal bomen
-    'max_depth': [3, 4, 5],              # Ondiepe bomen tegen overfitting
-    'learning_rate': [0.01, 0.05, 0.1],  # Stapgrootte
-    'subsample': [0.6, 0.8, 1.0],        # Fractie samples per boom
-    'colsample_bytree': [0.6, 0.8, 1.0]  # Fractie features per boom
+rf_param_grid = {
+    'n_estimators': [100, 200, 300],       
+    'max_depth': [3, 5, 7],      
+    'min_samples_split': [4, 6, 10],     
+    'min_samples_leaf': [2, 5, 10],       
+    'max_features': ['sqrt', 'log2', 0.3]  
 }
 
-base_classifier = XGBClassifier(
-    use_label_encoder=False,
-    eval_metric='logloss',
+base_classifier = RandomForestClassifier(
     random_state=42
 )
+
+
+
+#     use_label_encoder=False,
+#     eval_metric='logloss',
+#     random_state=42
+# )
 
 # Cross-validation setup
 outer_cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
@@ -158,7 +165,7 @@ for fold, (train_index, val_index) in enumerate(outer_cv.split(X_full, y_full), 
     # D. Hyperparameters tunen (Inner CV op X_tr_final)
     grid_search = GridSearchCV(
         estimator=base_classifier,
-        param_grid=xgb_param_grid,
+        param_grid=rf_param_grid,
         cv=inner_cv,
         scoring='roc_auc',
         n_jobs=-1,  # Gebruik alle CPU cores

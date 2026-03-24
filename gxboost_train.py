@@ -11,7 +11,7 @@ from sklearn.metrics import roc_auc_score
 from sklearn.metrics import accuracy_score
 
 from load_data import load_data, split_pd
-from preprocessing import remove_zero_variance_features, remove_highly_correlated_features
+from preprocessing import remove_zero_variance_features, remove_highly_correlated_features, apply_normalization
 
 from fs_lasso import fs_lasso
 from fs_mRMR import fs_mrmr
@@ -24,7 +24,8 @@ GIST_data = load_data('GIST_radiomicFeatures.csv')
 GIST_train, GIST_test, y_train, y_test = split_pd(GIST_data, False)
 
 # Zero variance mag buiten de loop (het kijkt alleen naar de X-waarden, niet naar y)
-preproc_GIST_train, _ = remove_zero_variance_features(GIST_train, show_details=False)
+normalized_GIST_train, scaler = apply_normalization(GIST_train)
+preproc_GIST_train, _ = remove_zero_variance_features(normalized_GIST_train, show_details=False)
 
 X_full = preproc_GIST_train 
 y_full = y_train.values 
@@ -88,19 +89,19 @@ for fold, (train_index, val_index) in enumerate(outer_cv.split(X_full, y_full), 
 #Kies hier een andere versie afhankelijk van je feature selectie methode
 #_______________________________________________________________
    # C. Feature Selection: mRMR (ALLEEN fitten op X_tr en y_tr)
-    # num_features_to_select = 15
+    num_features_to_select = 15
     
-    # # DE FIX: Maak van de numpy array (y_tr) een Pandas Series met de index van X_tr_filtered
-    # y_tr_series = pd.Series(y_tr, index=X_tr_filtered.index)
+    # DE FIX: Maak van de numpy array (y_tr) een Pandas Series met de index van X_tr_filtered
+    y_tr_series = pd.Series(y_tr, index=X_tr_filtered.index)
     
-    # # Gebruik nu y_tr_series voor mRMR in plaats van y_tr
-    # # (Check even of jouw fs_mrmr functie direct een lijst teruggeeft of een tuple; 
-    # # bij fs_mutualinformation gebruikte je nog [0] erachter, bij mrmr is dat vaak niet nodig)
-    # selected_features_mrmr = fs_mrmr(X_tr_filtered, y_tr_series, num_features_to_select)[0]
+    # Gebruik nu y_tr_series voor mRMR in plaats van y_tr
+    # (Check even of jouw fs_mrmr functie direct een lijst teruggeeft of een tuple; 
+    # bij fs_mutualinformation gebruikte je nog [0] erachter, bij mrmr is dat vaak niet nodig)
+    selected_features_mrmr = fs_mrmr(X_tr_filtered, y_tr_series, num_features_to_select)[0]
     
-    # # Pas de definitieve selectie toe op zowel train als validatie
-    # X_tr_final = X_tr_filtered[selected_features_mrmr]
-    # X_val_final = X_val_filtered[selected_features_mrmr]
+    # Pas de definitieve selectie toe op zowel train als validatie
+    X_tr_final = X_tr_filtered[selected_features_mrmr]
+    X_val_final = X_val_filtered[selected_features_mrmr]
 #________________________________________________________________
     # C. Feature Selection: LASSO met vooraf getunede penalty score
     
@@ -126,17 +127,17 @@ for fold, (train_index, val_index) in enumerate(outer_cv.split(X_full, y_full), 
 
 ## C. Feature Selection: RFE (Recursive Feature Elimination)
 # C. Feature Selection: RFE (Recursive Feature Elimination)
-    y_tr_series = pd.Series(y_tr, index=X_tr_filtered.index)
-    aantal_features_rfe = 15  
+    # y_tr_series = pd.Series(y_tr, index=X_tr_filtered.index)
+    # aantal_features_rfe = 15  
     
-    # DE FIX: We pakken [1] aan het einde, omdat daar jouw lijst met features zit!
-    selected_features_rfe = perform_rfe(X_tr_filtered, y_tr_series, aantal_features_rfe)[1]
+    # # DE FIX: We pakken [1] aan het einde, omdat daar jouw lijst met features zit!
+    # selected_features_rfe = perform_rfe(X_tr_filtered, y_tr_series, aantal_features_rfe)[1]
     
-    print(f"Aantal features geselecteerd door RFE: {len(selected_features_rfe)}")
+    # print(f"Aantal features geselecteerd door RFE: {len(selected_features_rfe)}")
     
-    # Pas de definitieve selectie toe op zowel train als validatie
-    X_tr_final = X_tr_filtered[selected_features_rfe]
-    X_val_final = X_val_filtered[selected_features_rfe]
+    # # Pas de definitieve selectie toe op zowel train als validatie
+    # X_tr_final = X_tr_filtered[selected_features_rfe]
+    # X_val_final = X_val_filtered[selected_features_rfe]
 #_______________________________________________________________
 # C. Feature Selection: Mutual Information (ZONDER data leakage)
     # y_tr_series = pd.Series(y_tr, index=X_tr_filtered.index)
@@ -206,7 +207,7 @@ results_df = pd.DataFrame({
 
 # 2. Kies een duidelijke bestandsnaam
 #PAS HIER NOG DE NAAM AAN ALS JE EEN ANDERE FEATURE SELECTIE METHODE GEBRUIKT 
-pickle_filename = 'nested_cv_results_XGB_RFE.pkl'
+pickle_filename = 'train results XGboost mrmr.pkl'
 
 # 3. Sla het op als pickle!
 results_df.to_pickle(pickle_filename)
