@@ -54,7 +54,7 @@ def remove_zero_variance_features(df, show_details=True):
 
     return df_reduced, kept_features
 
-def remove_highly_correlated_features(df, correlation_threshold=0.90, show_details=False):
+def remove_highly_correlated_features(df, correlation_threshold=0.95, show_details=False):
     """
     Remove features that are highly correlated with another feature.
 
@@ -102,4 +102,6 @@ GIST_train, GIST_test, y_train, y_test = split_pd(GIST_data, False)
 
 normalized_GIST_train, scaler = apply_normalization(GIST_train)
 preproc_GIST_train, kept_features = remove_zero_variance_features(normalized_GIST_train, show_details=False)
-preproc_GIST_train, kept_features = remove_highly_correlated_features(preproc_GIST_train, correlation_threshold=0.90, show_details=False)
+preproc_GIST_train, kept_features = remove_highly_correlated_features(preproc_GIST_train, correlation_threshold=0.95, show_details=False)
+
+#%%
