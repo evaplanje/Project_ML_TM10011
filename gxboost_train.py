@@ -194,3 +194,26 @@ print(f"Gemiddelde AUC:       {np.mean(auc_scores):.4f} (+/- {np.std(auc_scores)
 print(f"Alle Accuracy Scores: {[round(score, 4) for score in accuracy_scores]}")
 print(f"Gemiddelde Accuracy:  {np.mean(accuracy_scores):.4f} (+/- {np.std(accuracy_scores):.4f})")
 # %%
+# --- Resultaten opslaan als Pickle ---
+
+# 1. Verzamel alle lijstjes in één overzichtelijk Pandas DataFrame
+results_df = pd.DataFrame({
+    'fold': range(1, len(auc_scores) + 1),
+    'best_xgb_params': best_parameters_per_fold,
+    'roc_auc_score': auc_scores,
+    'accuracy_score': accuracy_scores
+})
+
+# 2. Kies een duidelijke bestandsnaam
+#PAS HIER NOG DE NAAM AAN ALS JE EEN ANDERE FEATURE SELECTIE METHODE GEBRUIKT 
+pickle_filename = 'nested_cv_results_XGB_RFE.pkl'
+
+# 3. Sla het op als pickle!
+results_df.to_pickle(pickle_filename)
+
+print(f"\n Resultaten succesvol opgeslagen in: {pickle_filename}")
+print(results_df)
+
+# Tip: Als je het later weer wilt inladen om te bekijken, gebruik je simpelweg:
+# ingeladen_data = pd.read_pickle('nested_cv_results_XGB_RFE.pkl')
+# %%
