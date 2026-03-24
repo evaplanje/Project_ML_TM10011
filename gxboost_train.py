@@ -38,14 +38,43 @@ xgb_param_grid = {
     'colsample_bytree': [0.6, 0.8, 1.0]  # Fraction of features used per tree
 }
 
-final_selected_features_train = selected_features_mi #verander dit naar features uit de pickles 
+final_selected_features_train = fs_mutualinformation(X, y, 20, False)[0] #verander dit naar features uit de pickles
+#n_features_selected uit de pickles halen en hier gebruiken
 
-X_train_inner, final_selected_features_train= remove_highly_correlated_features(
-                    X_train_inner,
+GIST_train_train = GIST_train[final_selected_features_train]
+
+GIST_train_train, final_selected_features_train= remove_highly_correlated_features(
+                    GIST_train,
                     correlation_threshold=0.95,
                     show_details=False
                 )
 
-X_train = X_train[selected_features]
+
+print(f"Final selected features: {final_selected_features_train}")
+#%%
 
 classifier = XGBClassifier(
+    n_estimators=100,
+    max_depth=4,
+    learning_rate=0.05,
+    subsample=0.8,
+    colsample_bytree=0.8,
+    use_label_encoder=False,
+    eval_metric='logloss',
+    random_state=42
+)
+
+skf = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+auc_scores = []
+for train_index, val_index in skf.split(GIST_train, y):
+    X_tr, X_val = GIST_train.iloc[train_index], GIST_train.iloc[val_index]
+    y_tr, y_val = y[train_index], y[val_index]
+    
+    classifier.fit(X_tr, y_tr)
+    y_val_pred_proba = classifier.predict_proba(X_val)[:, 1]
+    auc = roc_auc_score(y_val, y_val_pred_proba)
+    auc_scores.append(auc)
+
+print(f"AUC Scores: {auc_scores}")
+print(f"Mean AUC: {np.mean(auc_scores)}")
+# %%
