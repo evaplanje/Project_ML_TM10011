@@ -23,8 +23,8 @@ from fs_RFE import perform_rfe
 C_VALUES = [0.01, 0.02, 0.03]
 K_VALUES = [10, 15, 20]
 
-C_VALUES = [0.02]
-K_VALUES = [15]
+# C_VALUES = [0.02]
+# K_VALUES = [15]
 
 fs_configs = (
     [{'method': 'lasso', 'param': c} for c in C_VALUES] +
@@ -41,11 +41,11 @@ SVM_param_grid = {
     'gamma': ['scale', 'auto']
 }
 
-SVM_param_grid = {
-    'C': [1],
-    'kernel': ['rbf'],
-    'gamma': ['auto']
-}
+# SVM_param_grid = {
+#     'C': [1],
+#     'kernel': ['rbf'],
+#     'gamma': ['auto']
+# }
 
 # Create combinations
 svm_keys, svm_values = zip(*SVM_param_grid.items())
