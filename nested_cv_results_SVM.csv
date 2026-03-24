@@ -1,6 +1,21 @@
 fold,model_name,best_fs_method,best_fs_param,best_svm_params,n_features_selected,roc_auc_score
-1,rfe_SVM,rfe,15,"{'C': 0.1, 'kernel': 'linear', 'gamma': 'scale'}",15,0.6250000000000001
-2,mrmr_SVM,mrmr,15,"{'C': 1, 'kernel': 'linear', 'gamma': 'scale'}",15,0.7315789473684211
-3,rfe_SVM,rfe,15,"{'C': 1, 'kernel': 'rbf', 'gamma': 'scale'}",15,0.5078947368421052
-4,rfe_SVM,rfe,15,"{'C': 0.1, 'kernel': 'linear', 'gamma': 'scale'}",15,0.6789473684210526
-5,mrmr_SVM,mrmr,15,"{'C': 0.1, 'kernel': 'linear', 'gamma': 'scale'}",15,0.4473684210526316
+1,LASSO_SVM,lasso,0.02,"{'C': 1, 'kernel': 'rbf', 'gamma': 'auto'}",20,0.53125
+1,MRMR_SVM,mrmr,15.0,"{'C': 1, 'kernel': 'rbf', 'gamma': 'auto'}",15,0.59625
+1,MI_SVM,mi,15.0,"{'C': 1, 'kernel': 'rbf', 'gamma': 'auto'}",15,0.52
+1,RFE_SVM,rfe,15.0,"{'C': 1, 'kernel': 'rbf', 'gamma': 'auto'}",15,0.7050000000000001
+2,LASSO_SVM,lasso,0.02,"{'C': 1, 'kernel': 'rbf', 'gamma': 'auto'}",18,0.4789473684210526
+2,MRMR_SVM,mrmr,15.0,"{'C': 1, 'kernel': 'rbf', 'gamma': 'auto'}",15,0.6763157894736842
+2,MI_SVM,mi,15.0,"{'C': 1, 'kernel': 'rbf', 'gamma': 'auto'}",15,0.5263157894736843
+2,RFE_SVM,rfe,15.0,"{'C': 1, 'kernel': 'rbf', 'gamma': 'auto'}",15,0.5210526315789474
+3,LASSO_SVM,lasso,0.02,"{'C': 1, 'kernel': 'rbf', 'gamma': 'auto'}",20,0.4842105263157895
+3,MRMR_SVM,mrmr,15.0,"{'C': 1, 'kernel': 'rbf', 'gamma': 'auto'}",15,0.618421052631579
+3,MI_SVM,mi,15.0,"{'C': 1, 'kernel': 'rbf', 'gamma': 'auto'}",15,0.6592105263157895
+3,RFE_SVM,rfe,15.0,"{'C': 1, 'kernel': 'rbf', 'gamma': 'auto'}",15,0.6947368421052631
+4,LASSO_SVM,lasso,0.02,"{'C': 1, 'kernel': 'rbf', 'gamma': 'auto'}",20,0.5644736842105263
+4,MRMR_SVM,mrmr,15.0,"{'C': 1, 'kernel': 'rbf', 'gamma': 'auto'}",15,0.6960526315789474
+4,MI_SVM,mi,15.0,"{'C': 1, 'kernel': 'rbf', 'gamma': 'auto'}",15,0.6236842105263158
+4,RFE_SVM,rfe,15.0,"{'C': 1, 'kernel': 'rbf', 'gamma': 'auto'}",15,0.756578947368421
+5,LASSO_SVM,lasso,0.02,"{'C': 1, 'kernel': 'rbf', 'gamma': 'auto'}",19,0.5157894736842106
+5,MRMR_SVM,mrmr,15.0,"{'C': 1, 'kernel': 'rbf', 'gamma': 'auto'}",15,0.5736842105263158
+5,MI_SVM,mi,15.0,"{'C': 1, 'kernel': 'rbf', 'gamma': 'auto'}",15,0.7078947368421052
+5,RFE_SVM,rfe,15.0,"{'C': 1, 'kernel': 'rbf', 'gamma': 'auto'}",15,0.6394736842105263
