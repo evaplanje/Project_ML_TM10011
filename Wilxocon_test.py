@@ -31,6 +31,7 @@ print(f"Bonferroni gecorrigeerde alpha: {alpha_corrected:.5f}")
 
 #%% ---------------- PAARSGEWIJZE WILCOXON TESTS ----------------
 results = []
+win_counts = {model: 0 for model in all_model_scores.keys()}  # Teller voor wins per model
 
 for (model_a, scores_a), (model_b, scores_b) in combinations(all_model_scores.items(), 2):
     
@@ -41,6 +42,8 @@ for (model_a, scores_a), (model_b, scores_b) in combinations(all_model_scores.it
         continue
     
     stat, p = wilcoxon(scores_a, scores_b)
+
+    winner = model_a if np.mean(scores_a) > np.mean(scores_b) else model_b
     
     results.append({
         'model_a':     model_a,
@@ -49,11 +52,20 @@ for (model_a, scores_a), (model_b, scores_b) in combinations(all_model_scores.it
         'mean_auc_b':  np.mean(scores_b),
         'p_value':     p,
         'significant': p < alpha_corrected,
-        'winner':      model_a if np.mean(scores_a) > np.mean(scores_b) else model_b
+        'winner':   winner   
     })
+
+    win_counts[winner] += 1
 
 results_df = pd.DataFrame(results)
 print("\n=== Alle paarsgewijze vergelijkingen ===")
 print(results_df.to_string(index=False))
+
+# ---------------- WINNERS TELLEN ----------------
+print("\n=== Aantal overwinningen per model ===")
+for model, count in win_counts.items():
+    print(f"{model}: {count} overwinningen")
+
+
 
 #%% ------
