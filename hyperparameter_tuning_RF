@@ -85,7 +85,7 @@ pipeline = Pipeline([
     ('correlation', CorrelationFilter(threshold=0.95)),
     
     # Stap 4: Jouw mRMR feature selectie (hier stellen we 15 in) DEZE DUS AANPASSEN NAAR WENS!
-    ('mrmr', MRMRFilter(num_features=15)),
+    ('mi', MRMRFilter(num_features=15)),
     
     # Stap 5: De classifier
     ('rf', RandomForestClassifier(random_state=42))

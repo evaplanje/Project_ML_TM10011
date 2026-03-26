@@ -8,7 +8,7 @@ from sklearn.preprocessing import RobustScaler, LabelEncoder
 from sklearn.feature_selection import VarianceThreshold
 from sklearn.pipeline import Pipeline
 from sklearn.base import BaseEstimator, TransformerMixin
-from sklearn.metrics import roc_auc_score, accuracy_score, classification_report
+from sklearn.metrics import roc_auc_score, accuracy_score, classification_report, confusion_matrix
 
 from load_data import load_data, split_pd
 from preprocessing import remove_highly_correlated_features
@@ -126,10 +126,34 @@ grid_search.fit(GIST_train, y_train_encoded)
 print("\n=== TUNING RESULTATEN ===")
 print(f"Beste parameters: {grid_search.best_params_}")
 print(f"Beste Cross-Validation Accuracy trainset: {grid_search.best_score_:.4f}")
-
-
-# Haal het definitieve (getrainde) model uit de grid search
+     
+# Haal het definitieve model op
 best_final_model = grid_search.best_estimator_
+print("Klassenvolgorde:", label_encoder.classes_)
+
+# Evaluatie op train
+y_pred = best_final_model.predict(GIST_train)
+y_proba = best_final_model.predict_proba(GIST_train)[:, 1]
+
+train_accuracy = accuracy_score(y_train_encoded, y_pred)
+train_auc = roc_auc_score(y_train_encoded, y_proba)
+
+tn, fp, fn, tp = confusion_matrix(y_train_encoded, y_pred).ravel()
+sensitivity = tp / (tp + fn) if (tp + fn) > 0 else 0
+specificity = tn / (tn + fp) if (tn + fp) > 0 else 0
+
+print("\n=== TrainRESULTATEN ===")
+print(f"Accuracy:     {train_accuracy:.4f}")
+print(f"AUC:          {train_auc:.4f}")
+print(f"Sensitivity:  {sensitivity:.4f}")
+print(f"Specificity:  {specificity:.4f}")
+print("\nConfusion Matrix:")
+print(confusion_matrix(y_train_encoded, y_pred))
+print(classification_report(
+    y_train_encoded,
+    y_pred,
+    target_names=[str(c) for c in label_encoder.classes_]
+))
 
 # Sla het volledig getrainde eindmodel op
 model_filename = 'final_pipeline_MI_xgb.pkl'
