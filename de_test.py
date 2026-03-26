@@ -110,7 +110,6 @@ def delong_roc_test(ground_truth, predictions_one, predictions_two):
 # =====================================================================
 # 3. Load Data & Recreate Encoder
 # =====================================================================
-print("Loading data...")
 GIST_data = load_data('GIST_radiomicFeatures.csv')
 GIST_train, GIST_test, y_train, y_test = split_pd(GIST_data, False)
 
