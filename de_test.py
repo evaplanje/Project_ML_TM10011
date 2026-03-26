@@ -121,9 +121,9 @@ y_test_encoded = label_encoder.transform(y_test)
 # 4. Evaluation Loop
 # =====================================================================
 models_to_test = [
-    'final_pipeline_MI_rf.pkl',
-    'final_pipeline_mrmr_rf.pkl',
-    'final_pipeline_mrmr_svm.pkl'
+    'final_model_lasso_rf.pkl',
+    'final_model_MI_rf.pkl',
+    'final_model_MI_xgb.pkl'
 ]
 
 # Dictionary to store the continuous scores (probabilities/decision functions)
