@@ -191,9 +191,11 @@ plt.show()
 # Het opslaan van de 'best_estimator_' zorgt dat alle geleerde parameters 
 # (zoals welke features LASSO heeft gekozen) bewaard blijven.
 
-filename = 'final_model_mi_rf.pkl'
+filename = 'final_model_mi_xgb.pkl'
 
 with open(filename, 'wb') as file:
     pickle.dump(best_final_model, file)
 
 print(f"\nModel succesvol opgeslagen als: {filename}")
+
+# %%

@@ -174,6 +174,9 @@ print("\nValidation Curve genereren...")
 param_name = "MI__num_features"
 param_range = [5, 10, 15, 20, 25, 30]
 
+# param_name = "LASSO__num_features"
+# param_range = [0.1, 0.2, 0.3, 0.4, 0.5]
+
 fig, ax = plt.subplots(figsize=(8, 5))
 ValidationCurveDisplay.from_estimator(
     best_final_model, GIST_train, y_train_encoded,
