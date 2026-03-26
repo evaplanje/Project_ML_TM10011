@@ -1,10 +1,10 @@
 #%%
-
 import pandas as pd
 import numpy as np
 import pickle
 import sklearn
 import scipy.stats
+import xgboost # Required for pickle to load the XGBClassifier
 
 from sklearn.preprocessing import LabelEncoder
 from sklearn.base import BaseEstimator, TransformerMixin
@@ -14,12 +14,13 @@ from sklearn.metrics import roc_auc_score, accuracy_score
 from load_data import load_data, split_pd
 from preprocessing import remove_highly_correlated_features
 from fs_mutualinformation import fs_mutualinformation
-from fs_mRMR import fs_mrmr
+from fs_lasso import fs_lasso
 
 sklearn.set_config(transform_output="pandas")
+#%%
 
 # =====================================================================
-# 1. Custom Transformers (Required for Pickle)
+# 1. Custom Transformers (Required for Pickle to load models)
 # =====================================================================
 class CorrelationFilter(BaseEstimator, TransformerMixin):
     def __init__(self, threshold=0.95):
@@ -32,7 +33,7 @@ class CorrelationFilter(BaseEstimator, TransformerMixin):
         return X[self.selected_features_]
 
 class MIFilter(BaseEstimator, TransformerMixin):
-    def __init__(self, num_features=None):
+    def __init__(self, num_features=10):
         self.num_features = num_features
         self.selected_features_ = None
     def fit(self, X, y):
@@ -42,13 +43,13 @@ class MIFilter(BaseEstimator, TransformerMixin):
     def transform(self, X):
         return X[self.selected_features_]
 
-class MRMRFilter(BaseEstimator, TransformerMixin):
-    def __init__(self, num_features=15):
-        self.num_features = num_features
+class LASSOFilter(BaseEstimator, TransformerMixin):
+    def __init__(self, C=0.01):
+        self.C = C
         self.selected_features_ = None
     def fit(self, X, y):
-        y_series = pd.Series(y, index=X.index)
-        self.selected_features_ = fs_mrmr(X, y_series, self.num_features)[0]
+        _, selected_features = fs_lasso(X, y, C=self.C)
+        self.selected_features_ = selected_features
         return self
     def transform(self, X):
         return X[self.selected_features_]
@@ -121,9 +122,9 @@ y_test_encoded = label_encoder.transform(y_test)
 # 4. Evaluation Loop
 # =====================================================================
 models_to_test = [
-    'final_model_lasso_rf.pkl',
-    'final_model_MI_rf.pkl',
-    'final_model_MI_xgb.pkl'
+    # 'final_model_lasso_rf.pkl',
+    'final_model_mi_rf.pkl',
+    'final_model_mi_xgb.pkl'
 ]
 
 # Dictionary to store the continuous scores (probabilities/decision functions)
@@ -152,33 +153,43 @@ for model_file in models_to_test:
         print(f"{model_file}:")
         print(f"   Accuracy: {acc:.4f} | AUC: {auc:.4f}")
         
+        
     except FileNotFoundError:
-        print(f"{model_file} not found.")
+        print(f"{model_file} not found. Check if the file is in your directory.")
+    except Exception as e:
+        print(f"Error loading {model_file}: {e}")
 
 # =====================================================================
 # 5. DeLong Statistical Comparisons
 # =====================================================================
 print("\n=== DELONG'S TEST COMPARISONS (p-values) ===")
 
-# Only run comparisons if all models loaded successfully
+# Only run comparisons if all 3 models loaded successfully
 if len(model_scores) == 3:
-    # 1. MI vs mRMR (Both Random Forest)
-    p_mi_vs_mrmr = delong_roc_test(y_test_encoded, 
-                                   model_scores['final_pipeline_MI_rf.pkl'], 
-                                   model_scores['final_pipeline_mrmr_rf.pkl'])
-    print(f"MI_RF vs mRMR_RF: p-value = {p_mi_vs_mrmr:.5f}")
+    # 1. LASSO Random Forest vs MI Random Forest
+    p_lasso_rf_vs_mi_rf = delong_roc_test(
+        y_test_encoded, 
+        model_scores['final_model_lasso_rf.pkl'], 
+        model_scores['final_model_mi_rf.pkl']
+    )
+    print(f"LASSO_RF vs MI_RF: p-value = {p_lasso_rf_vs_mi_rf:.5f}")
 
-    # 2. Random Forest vs SVM (Both mRMR)
-    p_rf_vs_svm = delong_roc_test(y_test_encoded, 
-                                  model_scores['final_pipeline_mrmr_rf.pkl'], 
-                                  model_scores['final_pipeline_mrmr_svm.pkl'])
-    print(f"mRMR_RF vs mRMR_SVM: p-value = {p_rf_vs_svm:.5f}")
+    # 2. LASSO Random Forest vs MI XGBoost
+    p_lasso_rf_vs_mi_xgb = delong_roc_test(
+        y_test_encoded, 
+        model_scores['final_model_lasso_rf.pkl'], 
+        model_scores['final_model_mi_xgb.pkl']
+    )
+    print(f"LASSO_RF vs MI_XGB: p-value = {p_lasso_rf_vs_mi_xgb:.5f}")
 
-    # 3. MI Random Forest vs mRMR SVM
-    p_mi_rf_vs_svm = delong_roc_test(y_test_encoded, 
-                                     model_scores['final_pipeline_MI_rf.pkl'], 
-                                     model_scores['final_pipeline_mrmr_svm.pkl'])
-    print(f"MI_RF vs mRMR_SVM: p-value = {p_mi_rf_vs_svm:.5f}")
+    # 3. MI Random Forest vs MI XGBoost
+    p_mi_rf_vs_mi_xgb = delong_roc_test(
+        y_test_encoded, 
+        model_scores['final_model_mi_rf.pkl'], 
+        model_scores['final_model_mi_xgb.pkl']
+    )
+    print(f"MI_RF vs MI_XGB: p-value = {p_mi_rf_vs_mi_xgb:.5f}")
     
 else:
     print("Could not run DeLong's test because one or more models failed to load.")
+#%%
