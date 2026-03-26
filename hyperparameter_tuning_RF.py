@@ -86,8 +86,8 @@ pipeline = Pipeline([
     ('scaler', RobustScaler()), 
     ('variance', VarianceThreshold(threshold=0.0)), 
     ('correlation', CorrelationFilter(threshold=0.95)),
-    ('MI', MIFilter()),
-    #('LASSO', LASSOFilter()),
+    #('MI', MIFilter()),
+    ('LASSO', LASSOFilter()),
     ('rf', RandomForestClassifier(random_state=42))
 ])
 
@@ -102,8 +102,8 @@ param_grid = {
     'rf__min_samples_split': [4, 6, 10], 
     'rf__min_samples_leaf': [2, 5, 10], 
     'rf__max_features': ['sqrt', 'log2', 0.3],
-    'MI__num_features': [10, 15, 20]
-    #'LASSO__C': [0.01,0.02,0.03]
+    #'MI__num_features': [10, 15, 20]
+    'LASSO__C': [0.01,0.02,0.03]
 }
 
 #maak de crossvalidatie splits 
@@ -171,11 +171,11 @@ plt.show()
 # =====================================================================
 
 print("\nValidation Curve genereren...")
-param_name = "MI__num_features"
-param_range = [5, 10, 15, 20, 25, 30]
+# param_name = "MI__num_features"
+# param_range = [5, 10, 15, 20, 25, 30]
 
-# param_name = "LASSO__num_features"
-# param_range = [0.1, 0.2, 0.3, 0.4, 0.5]
+param_name = "LASSO__num_features"
+param_range = [0.1, 0.2, 0.3, 0.4, 0.5]
 
 fig, ax = plt.subplots(figsize=(8, 5))
 ValidationCurveDisplay.from_estimator(
@@ -193,7 +193,7 @@ plt.show()
 # Het opslaan van de 'best_estimator_' zorgt dat alle geleerde parameters 
 # (zoals welke features LASSO heeft gekozen) bewaard blijven.
 
-filename = 'final_model_mi_rf.pkl'
+filename = 'final_model_lasso_rf.pkl'
 
 with open(filename, 'wb') as file:
     pickle.dump(best_final_model, file)
