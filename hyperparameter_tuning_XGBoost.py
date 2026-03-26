@@ -2,8 +2,10 @@
 import pandas as pd
 import numpy as np
 import pickle
+
+import sklearn
 from xgboost import XGBClassifier
-from sklearn.model_selection import StratifiedKFold, GridSearchCV
+from sklearn.model_selection import StratifiedKFold, GridSearchCV, ValidationCurveDisplay, LearningCurveDisplay
 from sklearn.preprocessing import RobustScaler, LabelEncoder
 from sklearn.feature_selection import VarianceThreshold
 from sklearn.pipeline import Pipeline
@@ -13,7 +15,14 @@ from sklearn.metrics import roc_auc_score, accuracy_score, classification_report
 from load_data import load_data, split_pd
 from preprocessing import remove_highly_correlated_features
 from fs_mutualinformation import fs_mutualinformation
-import sklearn
+import matplotlib.pyplot as plt
+from sklearn.metrics import roc_auc_score, accuracy_score, classification_report, confusion_matrix
+from load_data import load_data, split_pd
+from preprocessing import remove_highly_correlated_features
+from fs_mutualinformation import fs_mutualinformation
+from fs_lasso import fs_lasso
+
+
 sklearn.set_config(transform_output="pandas")
 
 #%%
@@ -107,58 +116,84 @@ param_grid = {
 cv_strategy = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
 
 grid_search = GridSearchCV(
-    estimator=pipeline,
+     estimator=pipeline,
     param_grid=param_grid,
     cv=cv_strategy,
-    scoring='accuracy', #scoring met accuracy nu omdat dat in de opdracht meer dan 60% moet zijn. Kunnen we ook nog aanpassen naar AUC 
+    scoring={'accuracy': 'accuracy', 'roc_auc': 'roc_auc'},
     n_jobs=-1,
     verbose=1,
-    refit=True # traint automatisch 1 definitief model op álle train data met de beste parameters
+    refit='roc_auc'  # traint automatisch 1 definitief model op álle train data met de beste parameters
 )
 #%%
-# =====================================================================
-# 5. Tunen en Fitten (Dit gebeurt uitsluitend op GIST_train)
-# =====================================================================
-
-print("Start met het tunen van het definitieve model op de trainingsdata...")
+print("Start tuning...")
 grid_search.fit(GIST_train, y_train_encoded)
 
-print("\n=== TUNING RESULTATEN ===")
+best_index = grid_search.best_index_
+
+# De namen in cv_results_ volgen het patroon: mean_test_[key_uit_scoring_dict]
+cv_auc_mean = grid_search.cv_results_['mean_test_roc_auc'][best_index]
+cv_auc_std = grid_search.cv_results_['std_test_roc_auc'][best_index]
+cv_acc_mean = grid_search.cv_results_['mean_test_accuracy'][best_index]
+cv_acc_std = grid_search.cv_results_['std_test_accuracy'][best_index]
+
+print("\n=== CV RESULTATEN (VALIDATIE SETS) ===")
 print(f"Beste parameters: {grid_search.best_params_}")
-print(f"Beste Cross-Validation Accuracy trainset: {grid_search.best_score_:.4f}")
-     
-# Haal het definitieve model op
+print(f"CV ROC-AUC:    {cv_auc_mean:.4f} (+/- {cv_auc_std:.4f})")
+print(f"CV Accuracy:   {cv_acc_mean:.4f} (+/- {cv_acc_std:.4f})")
+
 best_final_model = grid_search.best_estimator_
-print("Klassenvolgorde:", label_encoder.classes_)
 
-# Evaluatie op train
-y_pred = best_final_model.predict(GIST_train)
-y_proba = best_final_model.predict_proba(GIST_train)[:, 1]
+# Overfitting check op Train set
+y_pred_train = best_final_model.predict(GIST_train)
+y_proba_train = best_final_model.predict_proba(GIST_train)[:, 1]
 
-train_accuracy = accuracy_score(y_train_encoded, y_pred)
-train_auc = roc_auc_score(y_train_encoded, y_proba)
+print("\n=== TRAIN RESULTATEN (OVERFITTING CHECK) ===")
+print(f"Train Accuracy: {accuracy_score(y_train_encoded, y_pred_train):.4f}")
+print(f"Train AUC:      {roc_auc_score(y_train_encoded, y_proba_train):.4f}")
 
-tn, fp, fn, tp = confusion_matrix(y_train_encoded, y_pred).ravel()
-sensitivity = tp / (tp + fn) if (tp + fn) > 0 else 0
-specificity = tn / (tn + fp) if (tn + fp) > 0 else 0
+#%%
+# =====================================================================
+# 6. Learning Curve
+# =====================================================================
 
-print("\n=== TrainRESULTATEN ===")
-print(f"Accuracy:     {train_accuracy:.4f}")
-print(f"AUC:          {train_auc:.4f}")
-print(f"Sensitivity:  {sensitivity:.4f}")
-print(f"Specificity:  {specificity:.4f}")
-print("\nConfusion Matrix:")
-print(confusion_matrix(y_train_encoded, y_pred))
-print(classification_report(
-    y_train_encoded,
-    y_pred,
-    target_names=[str(c) for c in label_encoder.classes_]
-))
+print("\nLearning Curve genereren...")
+fig, ax = plt.subplots(figsize=(8, 5))
+LearningCurveDisplay.from_estimator(
+    best_final_model, GIST_train, y_train_encoded,
+    cv=cv_strategy, scoring='roc_auc', n_jobs=-1, ax=ax,
+    score_type="both", std_display_style="fill_between"
+)
+ax.set_title("Learning Curve (ROC-AUC)")
+plt.show()
 
-# Sla het volledig getrainde eindmodel op
-model_filename = 'final_pipeline_MI_xgb.pkl'
-with open(model_filename, 'wb') as f:
-    pickle.dump(best_final_model, f)
+#%%
+# =====================================================================
+# 7. Validation Curve
+# =====================================================================
 
-print(f"\nDefinitieve pipeline opgeslagen als: {model_filename}")
+print("\nValidation Curve genereren...")
+param_name = "MI__num_features"
+param_range = [5, 10, 15, 20, 25, 30]
+
+fig, ax = plt.subplots(figsize=(8, 5))
+ValidationCurveDisplay.from_estimator(
+    best_final_model, GIST_train, y_train_encoded,
+    param_name=param_name, param_range=param_range,
+    cv=cv_strategy, scoring="roc_auc", n_jobs=-1, ax=ax,
+    score_type="both", std_display_style="fill_between"
+)
+ax.set_title(f"Validation Curve: {param_name}")
+plt.show()
 # %%
+
+
+# De best_final_model bevat de HELE pipeline (scaler, filters, RF)
+# Het opslaan van de 'best_estimator_' zorgt dat alle geleerde parameters 
+# (zoals welke features LASSO heeft gekozen) bewaard blijven.
+
+filename = 'final_model_mi_rf.pkl'
+
+with open(filename, 'wb') as file:
+    pickle.dump(best_final_model, file)
+
+print(f"\nModel succesvol opgeslagen als: {filename}")
