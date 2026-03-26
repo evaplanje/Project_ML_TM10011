@@ -19,6 +19,10 @@ from fs_lasso import fs_lasso
 import sklearn
 sklearn.set_config(transform_output="pandas")
 
+import matplotlib.pyplot as plt
+import numpy as np
+from sklearn.model_selection import ValidationCurveDisplay, LearningCurveDisplay
+
 #%%
 # =====================================================================
 # 1. Custom Transformers voor in de Pipeline
@@ -127,10 +131,12 @@ grid_search = GridSearchCV(
     estimator=pipeline,
     param_grid=param_grid,
     cv=cv_strategy,
-    scoring='accuracy', #scoring met accuracy nu omdat dat in de opdracht meer dan 60% moet zijn. Kunnen we ook nog aanpassen naar AUC 
+    # We berekenen nu beide:
+    scoring={'accuracy': 'accuracy', 'auc_score': 'roc_auc'}, 
     n_jobs=-1,
     verbose=1,
-    refit=True # traint automatisch 1 definitief model op álle train data met de beste parameters
+    # Omdat we meerdere scores hebben, moeten we zeggen welke de doorslag geeft voor "best_params_"
+    refit='auc_score'
 )
 #%%
 # =====================================================================
@@ -142,8 +148,16 @@ grid_search.fit(GIST_train, y_train_encoded)
 
 print("\n=== TUNING RESULTATEN ===")
 print(f"Beste parameters: {grid_search.best_params_}")
-print(f"Beste Cross-Validation Accuracy trainset: {grid_search.best_score_:.4f}")
-     
+
+# Omdat we refit='auc_score' hebben gebruikt, is .best_score_ automatisch de AUC!
+print(f"Beste Cross-Validation AUC: {grid_search.best_score_:.4f}")
+
+# Haal de bijbehorende Accuracy op uit de resultaten
+best_index = grid_search.best_index_
+best_cv_accuracy = grid_search.cv_results_['mean_test_accuracy'][best_index]
+
+print(f"Bijbehorende CV Accuracy: {best_cv_accuracy:.4f}")
+
 # Haal het definitieve model op
 best_final_model = grid_search.best_estimator_
 print("Klassenvolgorde:", label_encoder.classes_)
@@ -179,3 +193,76 @@ with open(model_filename, 'wb') as f:
 
 print(f"\nDefinitieve pipeline opgeslagen als: {model_filename}")
 # %%
+#%%
+# =====================================================================
+# 6. Plotting the Learning Curve (Op GIST_train)
+# =====================================================================
+
+print("\nGenereren van de Learning Curve...")
+
+# We gebruiken het beste model uit de grid search en jouw bestaande CV strategie
+fig, ax = plt.subplots(figsize=(10, 6))
+
+LearningCurveDisplay.from_estimator(
+    estimator=grid_search.best_estimator_, 
+    X=GIST_train, 
+    y=y_train_encoded, 
+    cv=cv_strategy,          # Gebruikt jouw StratifiedKFold van 5 splits
+    scoring='accuracy',      # Zelfde metric als je GridSearchCV
+    train_sizes=np.linspace(0.1, 1.0, 5), # 5 stappen van 10% tot 100% van de data
+    n_jobs=-1,
+    ax=ax,
+    score_type="both",       # Plot zowel de train als de validation score
+    std_display_style="fill_between" # Laat de variantie (schaduw) zien
+)
+
+ax.set_title("Learning Curve (Random Forest met LASSO)")
+ax.set_xlabel("Aantal Training Samples")
+ax.set_ylabel("Accuracy")
+plt.grid(True)
+plt.show()
+#%%
+# =====================================================================
+# 7. Plotting the Validation Curve (Op GIST_train)
+# =====================================================================
+
+print("\nGenereren van de Validation Curve...")
+
+# We pakken je beste model als basis, zodat de andere parameters 
+# (zoals LASSO__C) op hun optimale waarde blijven staan.
+base_estimator = grid_search.best_estimator_
+
+# bij lasso
+# param_name = "LASSO__C"
+# param_range = np.arange(0.005, 0.04, 0.005) 
+
+# bij MI
+param_name = "MI__num_features"
+param_range = np.arange(10, 40, 3) 
+
+
+fig, ax = plt.subplots(figsize=(10, 6))
+
+ValidationCurveDisplay.from_estimator(
+    estimator=base_estimator,
+    X=GIST_train,
+    y=y_train_encoded,
+    param_name=param_name,
+    param_range=param_range,
+    cv=cv_strategy,          # Gebruikt jouw StratifiedKFold van 5 splits
+    scoring="auc_score",      # Zelfde metric als je GridSearchCV
+    n_jobs=-1,
+    ax=ax,
+    score_type="both",       # Plot zowel train als validation
+    std_display_style="fill_between" # Laat de variantie (schaduw) zien
+)
+
+ax.set_title(f"Validation Curve voor {param_name}")
+ax.set_xlabel("Max Depth van Random Forest")
+ax.set_ylabel("Accuracy")
+# Omdat we een numerieke reeks gebruiken, zorgen we dat de x-as netjes verdeeld is
+ax.set_xticks(param_range) 
+plt.grid(True)
+plt.show()
+
+#%%
