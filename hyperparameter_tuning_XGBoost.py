@@ -12,7 +12,7 @@ from sklearn.metrics import roc_auc_score, accuracy_score, classification_report
 
 from load_data import load_data, split_pd
 from preprocessing import remove_highly_correlated_features
-from fs_mRMR import fs_mrmr
+from fs_mutualinformation import fs_mutualinformation
 import sklearn
 sklearn.set_config(transform_output="pandas")
 
@@ -38,15 +38,15 @@ class CorrelationFilter(BaseEstimator, TransformerMixin):
         # Filter de dataset
         return X[self.selected_features_]
 
-class MRMRFilter(BaseEstimator, TransformerMixin):
-    def __init__(self, num_features=15):
+class MIFilter(BaseEstimator, TransformerMixin):
+    def __init__(self, num_features=None):
         self.num_features = num_features
         self.selected_features_ = None
 
     def fit(self, X, y):
         # MRMR heeft y nodig als Pandas Series met de juiste index
         y_series = pd.Series(y, index=X.index)
-        self.selected_features_ = fs_mrmr(X, y_series, self.num_features)[0]
+        self.selected_features_ = fs_mutualinformation(X, y_series, self.num_features)[0]
         return self
 
     def transform(self, X):
@@ -83,7 +83,7 @@ pipeline = Pipeline([
     ('correlation', CorrelationFilter(threshold=0.95)),
     
     # Stap 4: Jouw mRMR feature selectie (hier stellen we 15 in) DEZE DUS AANPASSEN NAAR WENS!
-    ('mrmr', MRMRFilter(num_features=15)),
+    ('MI', MIFilter()),
     
     # Stap 5: De classifier
     ('xgb', XGBClassifier(use_label_encoder=False, eval_metric='logloss', random_state=42))
@@ -98,7 +98,9 @@ param_grid = {
     'xgb__max_depth': [3, 4, 5],
     'xgb__learning_rate': [0.01, 0.05, 0.1],
     'xgb__subsample': [0.6, 0.8, 1.0],
-    'xgb__colsample_bytree': [0.6, 0.8, 1.0]
+    'xgb__colsample_bytree': [0.6, 0.8, 1.0],
+
+    'MI__num_features': [10, 15, 20]
 }
 
 # Cross-validatie setup voor het tunen op de train set
@@ -130,7 +132,7 @@ print(f"Beste Cross-Validation Accuracy trainset: {grid_search.best_score_:.4f}"
 best_final_model = grid_search.best_estimator_
 
 # Sla het volledig getrainde eindmodel op
-model_filename = 'final_pipeline_mrmr_xgb.pkl'
+model_filename = 'final_pipeline_MI_xgb.pkl'
 with open(model_filename, 'wb') as f:
     pickle.dump(best_final_model, f)
 

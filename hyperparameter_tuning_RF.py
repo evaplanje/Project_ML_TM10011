@@ -15,6 +15,7 @@ from sklearn.metrics import roc_auc_score, accuracy_score, classification_report
 from load_data import load_data, split_pd
 from preprocessing import remove_highly_correlated_features
 from fs_mutualinformation import fs_mutualinformation
+from fs_lasso import fs_lasso
 import sklearn
 sklearn.set_config(transform_output="pandas")
 
@@ -40,14 +41,28 @@ class CorrelationFilter(BaseEstimator, TransformerMixin):
         # Filter de dataset
         return X[self.selected_features_]
 
-class MIFilter(BaseEstimator, TransformerMixin):
-    def __init__(self, num_features=None):
-        self.num_features = num_features
+# class MIFilter(BaseEstimator, TransformerMixin):
+#     def __init__(self, num_features=None):
+#         self.num_features = num_features
+#         self.selected_features_ = None
+
+    # def fit(self, X, y):
+    #     y_series = pd.Series(y, index=X.index)
+    #     self.selected_features_ = fs_mutualinformation(X, y_series, self.num_features)[0]
+    #     return self
+
+    # def transform(self, X):
+    #     return X[self.selected_features_]
+
+class LASSOFilter(BaseEstimator, TransformerMixin):
+    def __init__(self, alpha=None):
+        self.alpha = alpha  # De regularisatieparameter voor Lasso
         self.selected_features_ = None
 
     def fit(self, X, y):
-        y_series = pd.Series(y, index=X.index)
-        self.selected_features_ = fs_mutualinformation(X, y_series, self.num_features)[0]
+        # Gebruik fs_lasso voor feature selectie
+        df_selected, selected_features = fs_lasso(X, y, C=self.alpha)  # fs_lasso retourneert de geselecteerde features
+        self.selected_features_ = selected_features
         return self
 
     def transform(self, X):
@@ -83,8 +98,9 @@ pipeline = Pipeline([
     # Stap 3: Jouw correlatiefilter
     ('correlation', CorrelationFilter(threshold=0.95)),
     
-    # Stap 4: Jouw MI feature selectie
-    ('MI', MIFilter()),
+    # Stap 4: Jouw feature selectie
+    # ('MI', MIFilter()),
+    ('LASSO', LASSOFilter()),
     
     # Stap 5: De classifier
     ('rf', RandomForestClassifier(random_state=42))
@@ -101,7 +117,8 @@ param_grid = {
     'rf__min_samples_leaf': [2, 5, 10],       
     'rf__max_features': ['sqrt', 'log2', 0.3],  
 
-    'MI__num_features': [10, 15, 20]
+    #'MI__num_features': [10, 15, 20]
+    'LASSO__alpha': [0.01, 0.02, 0.03]
 }
 
 # Cross-validatie setup voor het tunen op de train set
@@ -133,7 +150,7 @@ print(f"Beste Cross-Validation Accuracy trainset: {grid_search.best_score_:.4f}"
 best_final_model = grid_search.best_estimator_
 
 # Sla het volledig getrainde eindmodel op
-model_filename = 'final_pipeline_MI_rf.pkl'
+model_filename = 'final_pipeline_LASSO_rf.pkl'
 with open(model_filename, 'wb') as f:
     pickle.dump(best_final_model, f)
 
