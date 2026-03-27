@@ -2,33 +2,25 @@
 import pandas as pd
 import numpy as np
 import pickle
-
-import sklearn
-from xgboost import XGBClassifier
+import matplotlib.pyplot as plt
+from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import StratifiedKFold, GridSearchCV, ValidationCurveDisplay, LearningCurveDisplay
 from sklearn.preprocessing import RobustScaler, LabelEncoder
 from sklearn.feature_selection import VarianceThreshold
 from sklearn.pipeline import Pipeline
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.metrics import roc_auc_score, accuracy_score, classification_report, confusion_matrix
-
-from load_data import load_data, split_pd
-from preprocessing import remove_highly_correlated_features
-from fs_mutualinformation import fs_mutualinformation
-import matplotlib.pyplot as plt
-from sklearn.metrics import roc_auc_score, accuracy_score, classification_report, confusion_matrix
 from load_data import load_data, split_pd
 from preprocessing import remove_highly_correlated_features
 from fs_mutualinformation import fs_mutualinformation
 from fs_lasso import fs_lasso
-
+import sklearn
 
 sklearn.set_config(transform_output="pandas")
 
 #%%
 # =====================================================================
-# 1. Custom Transformers voor in de Pipeline
-# (Dit zorgt ervoor dat jouw functies naadloos samenwerken met sklearn)
+# 1. Custom Transformers
 # =====================================================================
 
 class CorrelationFilter(BaseEstimator, TransformerMixin):
@@ -37,29 +29,42 @@ class CorrelationFilter(BaseEstimator, TransformerMixin):
         self.selected_features_ = None
 
     def fit(self, X, y=None):
-        # Bereken gecorreleerde features en sla op welke we willen houden
         _, self.selected_features_ = remove_highly_correlated_features(
             X, correlation_threshold=self.threshold, show_details=False
         )
         return self
 
     def transform(self, X):
-        # Filter de dataset
         return X[self.selected_features_]
 
 class MIFilter(BaseEstimator, TransformerMixin):
-    def __init__(self, num_features=None):
+    def __init__(self, num_features=10):
         self.num_features = num_features
         self.selected_features_ = None
 
     def fit(self, X, y):
-        # MRMR heeft y nodig als Pandas Series met de juiste index
+        # Random state is al in de onderliggende functie gedefinieerd
         y_series = pd.Series(y, index=X.index)
         self.selected_features_ = fs_mutualinformation(X, y_series, self.num_features)[0]
         return self
 
     def transform(self, X):
         return X[self.selected_features_]
+    
+class LASSOFilter(BaseEstimator, TransformerMixin):
+    def __init__(self, C=0.01):
+        self.C = C
+        self.selected_features_ = None
+
+    def fit(self, X, y):
+        # We gebruiken hier jouw geïmporteerde fs_lasso functie
+        _, selected_features = fs_lasso(X, y, C=self.C)
+        self.selected_features_ = selected_features
+        return self
+
+    def transform(self, X):
+        return X[self.selected_features_]
+
 #%%
 # =====================================================================
 # 2. Data inladen
@@ -68,63 +73,57 @@ class MIFilter(BaseEstimator, TransformerMixin):
 GIST_data = load_data('GIST_radiomicFeatures.csv')
 GIST_train, GIST_test, y_train, y_test = split_pd(GIST_data, False)
 
-# Label encoding voor de targets (1x doen voor train en test)
 label_encoder = LabelEncoder()
 y_train_encoded = label_encoder.fit_transform(y_train)
 y_test_encoded = label_encoder.transform(y_test)
+
 #%%
 # =====================================================================
-# 3. De Scikit-Learn Pipeline Bouwen (100% Data Leakage Vrij)
+# 3. Pipeline Bouwen
 # =====================================================================
-
-# Door 'set_output' te gebruiken, zorgen we dat Scikit-learn DataFrames 
-# doorgeeft in plaats van Numpy arrays. Dat is nodig voor jouw functies!
-
 
 pipeline = Pipeline([
-    # Stap 1: Normalisatie (past zich per CV-fold aan)
     ('scaler', RobustScaler()), 
-    
-    # Stap 2: Zero variance (sklearn's native versie is makkelijker hier)
     ('variance', VarianceThreshold(threshold=0.0)), 
-    
-    # Stap 3: Jouw correlatiefilter
     ('correlation', CorrelationFilter(threshold=0.95)),
-    
-    # Stap 4: Jouw mRMR feature selectie (hier stellen we 15 in) DEZE DUS AANPASSEN NAAR WENS!
-    ('MI', MIFilter()),
-    
-    # Stap 5: De classifier
-    ('xgb', XGBClassifier(use_label_encoder=False, eval_metric='logloss', random_state=42))
+    #('MI', MIFilter()),
+    ('LASSO', LASSOFilter()),
+    ('rf', RandomForestClassifier(random_state=42))
 ])
+
 #%%
 # =====================================================================
-# 4. Hyperparameter Grid XGBOOST 
+# 4. Hyperparameter Grid
 # =====================================================================
 
 param_grid = {
-    'xgb__n_estimators': [50, 100, 200],
-    'xgb__max_depth': [3, 4, 5],
-    'xgb__learning_rate': [0.01, 0.05, 0.1],
-    'xgb__subsample': [0.6, 0.8, 1.0],
-    'xgb__colsample_bytree': [0.6, 0.8, 1.0],
-
-    'MI__num_features': [10, 15, 20]
+    'rf__n_estimators': [100, 200, 300], 
+    'rf__max_depth': [3, 5, 7],
+    'rf__min_samples_split': [4, 6, 10], 
+    'rf__min_samples_leaf': [2, 5, 10], 
+    'rf__max_features': ['sqrt', 'log2', 0.3],
+    #'MI__num_features': [10, 15, 20]
+    'LASSO__C': [0.01,0.02,0.03]
 }
 
-# Cross-validatie setup voor het tunen op de train set
+#maak de crossvalidatie splits 
 cv_strategy = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
 
 grid_search = GridSearchCV(
-     estimator=pipeline,
+    estimator=pipeline,
     param_grid=param_grid,
     cv=cv_strategy,
     scoring={'accuracy': 'accuracy', 'roc_auc': 'roc_auc'},
     n_jobs=-1,
     verbose=1,
-    refit='roc_auc'  # traint automatisch 1 definitief model op álle train data met de beste parameters
+    refit='roc_auc' 
 )
+
 #%%
+# =====================================================================
+# 5. Tunen en Fitten
+# =====================================================================
+
 print("Start tuning...")
 grid_search.fit(GIST_train, y_train_encoded)
 
@@ -172,8 +171,11 @@ plt.show()
 # =====================================================================
 
 print("\nValidation Curve genereren...")
-param_name = "MI__num_features"
-param_range = [5, 10, 15, 20, 25, 30]
+# param_name = "MI__num_features"
+# param_range = [5, 10, 15, 20, 25, 30]
+
+param_name = "LASSO__num_features"
+param_range = [0.1, 0.2, 0.3, 0.4, 0.5]
 
 fig, ax = plt.subplots(figsize=(8, 5))
 ValidationCurveDisplay.from_estimator(
@@ -191,11 +193,11 @@ plt.show()
 # Het opslaan van de 'best_estimator_' zorgt dat alle geleerde parameters 
 # (zoals welke features LASSO heeft gekozen) bewaard blijven.
 
-filename = 'final_model_mi_xgb.pkl'
+filename = 'models/final_model_MI_RF.pkl'
+filename = 'models/final_model_LASSO_RF.pkl'
 
 with open(filename, 'wb') as file:
     pickle.dump(best_final_model, file)
 
 print(f"\nModel succesvol opgeslagen als: {filename}")
-
 # %%

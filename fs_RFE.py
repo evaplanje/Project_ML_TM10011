@@ -28,19 +28,4 @@ def perform_rfe(X_train, y_train, n_features_to_select=20):
     # Return a placeholder (or the dataframe) AND the list, so it unpacks correctly
     return None, selected_features
 
-# %%
-# GIST_data = load_data('GIST_radiomicFeatures.csv')
-# GIST_train, GIST_test, y_train, y_test = split_pd(GIST_data, show_details=False)
 
-# # Preprocessing pipeline
-# winsorized_GIST_train = apply_winsorization(GIST_train)
-# normalized_GIST_train = apply_normalization(winsorized_GIST_train)
-# preproc_GIST_train, kept_features = remove_zero_variance_features(normalized_GIST_train, show_details=False)
-
-# # Run RFE (passing the PREPROCESSED data this time!)
-# selected_features = perform_rfe(preproc_GIST_train, y_train, n_features_to_select=20)   
-
-# print("Top 20 selected features:", selected_features)
-# # %%
-# plot_heatmap(preproc_GIST_train[selected_features])
-# %%

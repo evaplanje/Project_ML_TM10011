@@ -273,9 +273,6 @@ if not results_df.empty:
     for index, row in summary_stats.iterrows():
         print(f"{index}: {row['mean']:.3f} +/- {row['std']:.3f}")
 
-# Save CSV
-results_df.to_csv('nested_cv_results_RF.csv', index=False)
-
 # Save pickle (Wilcoxon)
 all_model_scores = {}
 
@@ -289,7 +286,7 @@ for _, row in results_df.iterrows():
 
     all_model_scores[model_name].append(score)
 
-with open('model_scores_RF.pkl', 'wb') as f:
+with open('models_scores_ncv/NCV_model_scores_RF.pkl', 'wb') as f:
     pickle.dump(all_model_scores, f)
 
 print("\nScores per model:")
@@ -298,4 +295,4 @@ for model, scores in all_model_scores.items():
 
 print("\n=== Processing Complete ===")
 
-#%%11
+#%%

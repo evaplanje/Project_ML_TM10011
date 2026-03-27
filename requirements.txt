@@ -1,6 +1,9 @@
-scikit-learn
-matplotlib
-torch
-pandas
-numpy
-seaborn
+numpy==2.4.2
+pandas==3.0.0
+scikit-learn==1.7.0
+scipy==1.17.0
+xgboost==3.2.0
+matplotlib==3.10.8
+seaborn==0.13.2
+mrmr-selection==0.2.8
+joblib==1.5.3

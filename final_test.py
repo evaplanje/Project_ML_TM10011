@@ -4,7 +4,7 @@ import numpy as np
 import pickle
 import sklearn
 import scipy.stats
-import xgboost # Required for pickle to load the XGBClassifier
+import xgboost
 
 from sklearn.preprocessing import LabelEncoder
 from sklearn.base import BaseEstimator, TransformerMixin
@@ -122,9 +122,9 @@ y_test_encoded = label_encoder.transform(y_test)
 # 4. Evaluation Loop
 # =====================================================================
 models_to_test = [
-    'final_model_lasso_rf.pkl',
-    'final_model_mi_rf.pkl',
-    'final_model_mi_xgb.pkl'
+    'models/final_model_LASSO_RF.pkl',
+    'models/final_model_MI_RF.pkl',
+    'models/final_model_MI_XGB.pkl'
 ]
 
 # Dictionary to store the continuous scores (probabilities/decision functions)
@@ -169,24 +169,24 @@ if len(model_scores) == 3:
     # 1. LASSO Random Forest vs MI Random Forest
     p_lasso_rf_vs_mi_rf = delong_roc_test(
         y_test_encoded, 
-        model_scores['final_model_lasso_rf.pkl'], 
-        model_scores['final_model_mi_rf.pkl']
+        model_scores['models/final_model_LASSO_RF.pkl'], 
+        model_scores['models/final_model_MI_RF.pkl']
     )
     print(f"LASSO_RF vs MI_RF: p-value = {p_lasso_rf_vs_mi_rf:.5f}")
 
     # 2. LASSO Random Forest vs MI XGBoost
     p_lasso_rf_vs_mi_xgb = delong_roc_test(
         y_test_encoded, 
-        model_scores['final_model_lasso_rf.pkl'], 
-        model_scores['final_model_mi_xgb.pkl']
+        model_scores['models/final_model_LASSO_RF.pkl'], 
+        model_scores['models/final_model_MI_XGB.pkl']
     )
     print(f"LASSO_RF vs MI_XGB: p-value = {p_lasso_rf_vs_mi_xgb:.5f}")
 
     # 3. MI Random Forest vs MI XGBoost
     p_mi_rf_vs_mi_xgb = delong_roc_test(
         y_test_encoded, 
-        model_scores['final_model_mi_rf.pkl'], 
-        model_scores['final_model_mi_xgb.pkl']
+        model_scores['models/final_model_MI_RF.pkl'], 
+        model_scores['models/final_model_MI_XGB.pkl']
     )
     print(f"MI_RF vs MI_XGB: p-value = {p_mi_rf_vs_mi_xgb:.5f}")
     
@@ -227,7 +227,7 @@ def plot_combined_roc(y_true, model_scores):
     plt.ylim([0.0, 1.05])
     plt.xlabel('1 - Specificity')
     plt.ylabel('Sensitivity')
-    plt.title('ROC curve Comparison - test set (n=50)')
+    plt.title('ROC curve comparison - test set (n=50)')
     plt.legend(loc="lower right")
     plt.grid(alpha=0.3)
     

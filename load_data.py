@@ -151,16 +151,3 @@ def split_pd(df, show_details = True):
         print("\nTest class distribution:")
         print(y_test.value_counts(normalize=True))
     return X_train, X_test, y_train, y_test
-
-
-#%%
-
-GIST_data = load_data('GIST_radiomicFeatures.csv')
-GIST_train, GIST_test, y_train, y_test = split_pd(GIST_data, False)
-
-
-# explore_data(GIST_data)
-# plot_feature_pairs(GIST_data)
-# plot_heatmap(GIST_data)
-
-#%%

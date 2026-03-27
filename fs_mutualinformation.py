@@ -30,15 +30,3 @@ def fs_mutualinformation(df, labels, k, showdetails=False):
     return selected_features_mi, mi_scores
 
 
- #%% Inladen data
-#  GIST_data = load_data('GIST_radiomicFeatures.csv')
-# GIST_train, GIST_test, y_train, y_test = split_pd(GIST_data, False)
-# normalized_GIST_train, scaler = apply_normalization(GIST_train)
-# preproc_GIST_train, kept_features = remove_zero_variance_features(normalized_GIST_train, show_details=False)
-
-# #%% Printen van de resultaten
-
-# mi_results, _ = fs_mutualinformation(preproc_GIST_train, y_train, 20, False)
-
-
-#%%

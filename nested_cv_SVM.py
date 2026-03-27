@@ -263,9 +263,6 @@ if not results_df.empty:
 
 
 
-# Save CSV
-results_df.to_csv('nested_cv_results_SVM.csv', index=False)
-
 # Save pickle (Wilcoxon)
 all_model_scores = {}
 
@@ -278,7 +275,7 @@ for _, row in results_df.iterrows():
 
     all_model_scores[model_name].append(score)
 
-with open('model_scores_SVM.pkl', 'wb') as f:
+with open('models_scores_ncv/NCV_model_scores_SVM.pkl', 'wb') as f:
     pickle.dump(all_model_scores, f)
 
 print("\nScores per model:")
