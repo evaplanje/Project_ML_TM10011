@@ -6,13 +6,13 @@ from scipy.stats import wilcoxon
 from itertools import combinations
 
 #%% # Load stored model performance scores for each classifier
-with open('model_scores_RF.pkl', 'rb') as f:
+with open('model_scores_ncv/NCV_model_scores_RF.pkl', 'rb') as f:
     scores_RF = pickle.load(f)
 
-with open('model_scores_SVM.pkl', 'rb') as f:
+with open('model_scores_ncv/NCV_model_scores_SVM.pkl', 'rb') as f:
     scores_SVM = pickle.load(f)
 
-with open('model_scores_XGB.pkl', 'rb') as f:
+with open('model_scores_ncv/NCV_model_scores_XGB.pkl', 'rb') as f:
     scores_XGB = pickle.load(f)
 
 # Combine the scores from all classifiers into a single dictionary
