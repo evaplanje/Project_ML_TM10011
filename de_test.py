@@ -122,7 +122,7 @@ y_test_encoded = label_encoder.transform(y_test)
 # 4. Evaluation Loop
 # =====================================================================
 models_to_test = [
-    # 'final_model_lasso_rf.pkl',
+    'final_model_lasso_rf.pkl',
     'final_model_mi_rf.pkl',
     'final_model_mi_xgb.pkl'
 ]
@@ -193,3 +193,48 @@ if len(model_scores) == 3:
 else:
     print("Could not run DeLong's test because one or more models failed to load.")
 #%%
+
+import matplotlib.pyplot as plt
+from sklearn.metrics import roc_curve, auc
+
+# =====================================================================
+# 6. Plotting ROC Curves
+# =====================================================================
+
+def plot_combined_roc(y_true, model_scores):
+    plt.figure(figsize=(10, 8))
+    
+    # Define colors for different models
+    colors = ['#1f77b4', '#ff7f0e', '#2ca02c']
+    
+    for (model_name, scores), color in zip(model_scores.items(), colors):
+        # Calculate FPR and TPR
+        fpr, tpr, _ = roc_curve(y_true, scores)
+        roc_auc = auc(fpr, tpr)
+        
+        # Clean up model name for the legend (remove '.pkl' and underscores)
+        clean_name = model_name.replace('final_model_', '').replace('.pkl', '').upper()
+        
+        # Plot the curve
+        plt.plot(fpr, tpr, color=color, lw=2, 
+                 label=f'{clean_name} (AUC = {roc_auc:.3f})')
+
+    # Plot the random chance line
+    plt.plot([0, 1], [0, 1], color='navy', lw=1, linestyle='--')
+    
+    # Formatting
+    plt.xlim([0.0, 1.0])
+    plt.ylim([0.0, 1.05])
+    plt.xlabel('1 - Specificity')
+    plt.ylabel('Sensitivity')
+    plt.title('ROC curve Comparison - test set (n=50)')
+    plt.legend(loc="lower right")
+    plt.grid(alpha=0.3)
+    
+    plt.show()
+
+# Execute the plot if models were loaded
+if len(model_scores) > 0:
+    plot_combined_roc(y_test_encoded, model_scores)
+else:
+    print("No model scores available to plot.")
