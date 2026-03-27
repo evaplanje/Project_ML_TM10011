@@ -121,7 +121,7 @@ y_test_encoded = label_encoder.transform(y_test)
 
 #%% Model evaluations
 
-# Define modeld to be evaluated 
+# Define models to be evaluated 
 models_to_test = [
     'models/final_model_LASSO_RF.pkl',
     'models/final_model_MI_RF.pkl',
@@ -130,7 +130,7 @@ models_to_test = [
 
 model_scores = {}
 
-# Evaluate each trained model on the test set
+# Evaluate each trained model on the testset
 print("\n=== MODEL EVALUATION ===")
 for model_file in models_to_test:
     try:
