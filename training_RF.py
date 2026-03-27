@@ -147,7 +147,7 @@ LearningCurveDisplay.from_estimator(
 )
 ax.set_title("Learning Curve (ROC-AUC)")
 handles, labels = ax.get_legend_handles_labels()
-ax.legend(handles, ["Training score", "Validation score"], loc="best")
+ax.legend(handles, ["train", "val"], loc="best")
 plt.show()
 
 #%% Validation curve
@@ -168,7 +168,7 @@ ValidationCurveDisplay.from_estimator(
 )
 ax.set_title(f"Validation Curve: {param_name}")
 handles, labels = ax.get_legend_handles_labels()
-ax.legend(handles, ["Training score", "Validation score"], loc="best")
+ax.legend(handles, ["train", "val"], loc="best")
 plt.show()
 # %% Save pickle of tuned hyperparameters and scores
 
