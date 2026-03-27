@@ -1,4 +1,5 @@
-#%%
+#%% Import
+
 import pandas as pd
 import numpy as np
 import pickle
@@ -6,22 +7,21 @@ import sklearn
 import scipy.stats
 import xgboost
 
+import matplotlib.pyplot as plt
 from sklearn.preprocessing import LabelEncoder
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.metrics import roc_auc_score, accuracy_score
+from sklearn.metrics import roc_curve, auc
 
-# Import your custom functions
 from load_data import load_data, split_pd
 from preprocessing import remove_highly_correlated_features
 from fs_mutualinformation import fs_mutualinformation
 from fs_lasso import fs_lasso
 
 sklearn.set_config(transform_output="pandas")
-#%%
+#%% #%% Custom feature selection transformers for pipeline integration
 
-# =====================================================================
-# 1. Custom Transformers (Required for Pickle to load models)
-# =====================================================================
+# Transformer to remove highly correlated features 
 class CorrelationFilter(BaseEstimator, TransformerMixin):
     def __init__(self, threshold=0.95):
         self.threshold = threshold
@@ -32,6 +32,8 @@ class CorrelationFilter(BaseEstimator, TransformerMixin):
     def transform(self, X):
         return X[self.selected_features_]
 
+
+# Transformer to perform feature selection using MI
 class MIFilter(BaseEstimator, TransformerMixin):
     def __init__(self, num_features=10):
         self.num_features = num_features
@@ -43,6 +45,8 @@ class MIFilter(BaseEstimator, TransformerMixin):
     def transform(self, X):
         return X[self.selected_features_]
 
+
+# Transformer to perform feature selection using LASSO
 class LASSOFilter(BaseEstimator, TransformerMixin):
     def __init__(self, C=0.01):
         self.C = C
@@ -54,9 +58,8 @@ class LASSOFilter(BaseEstimator, TransformerMixin):
     def transform(self, X):
         return X[self.selected_features_]
 
-# =====================================================================
-# 2. Fast DeLong's Test Implementation
-# =====================================================================
+#%% #%% Implementation of DeLong's test for comparing ROC-AUC
+
 def compute_midrank(x):
     J = np.argsort(x)
     Z = x[J]
@@ -108,9 +111,7 @@ def delong_roc_test(ground_truth, predictions_one, predictions_two):
     aucs, delongcov = fastDeLong(predictions_sorted_transposed, label_1_count)
     return calc_pvalue(aucs, delongcov)
 
-# =====================================================================
-# 3. Load Data & Recreate Encoder
-# =====================================================================
+#%% Load and prepare data 
 GIST_data = load_data('GIST_radiomicFeatures.csv')
 GIST_train, GIST_test, y_train, y_test = split_pd(GIST_data, False)
 
@@ -118,18 +119,18 @@ label_encoder = LabelEncoder()
 label_encoder.fit(y_train) 
 y_test_encoded = label_encoder.transform(y_test)
 
-# =====================================================================
-# 4. Evaluation Loop
-# =====================================================================
+#%% Model evaluations
+
+# Define modeld to be evaluated 
 models_to_test = [
     'models/final_model_LASSO_RF.pkl',
     'models/final_model_MI_RF.pkl',
     'models/final_model_MI_XGB.pkl'
 ]
 
-# Dictionary to store the continuous scores (probabilities/decision functions)
 model_scores = {}
 
+# Evaluate each trained model on the test set
 print("\n=== MODEL EVALUATION ===")
 for model_file in models_to_test:
     try:
@@ -138,13 +139,12 @@ for model_file in models_to_test:
             
         y_pred = pipe.predict(GIST_test)
         
-        # Safe extraction of probabilities or decision scores for AUC/DeLong
         if hasattr(pipe, "predict_proba"):
             y_score = pipe.predict_proba(GIST_test)[:, 1]
         else:
             y_score = pipe.decision_function(GIST_test)
             
-        # Store scores for DeLong later
+        # Store scores for DeLong
         model_scores[model_file] = y_score
         
         acc = accuracy_score(y_test_encoded, y_pred)
@@ -159,14 +159,12 @@ for model_file in models_to_test:
     except Exception as e:
         print(f"Error loading {model_file}: {e}")
 
-# =====================================================================
-# 5. DeLong Statistical Comparisons
-# =====================================================================
+#%% DeLong's statistical comparison
+
 print("\n=== DELONG'S TEST COMPARISONS (p-values) ===")
 
-# Only run comparisons if all 3 models loaded successfully
 if len(model_scores) == 3:
-    # 1. LASSO Random Forest vs MI Random Forest
+    # LASSO_RF vs MI_RF
     p_lasso_rf_vs_mi_rf = delong_roc_test(
         y_test_encoded, 
         model_scores['models/final_model_LASSO_RF.pkl'], 
@@ -174,7 +172,7 @@ if len(model_scores) == 3:
     )
     print(f"LASSO_RF vs MI_RF: p-value = {p_lasso_rf_vs_mi_rf:.5f}")
 
-    # 2. LASSO Random Forest vs MI XGBoost
+    # 2. LASSO_RF vs MI_XGB
     p_lasso_rf_vs_mi_xgb = delong_roc_test(
         y_test_encoded, 
         model_scores['models/final_model_LASSO_RF.pkl'], 
@@ -182,7 +180,7 @@ if len(model_scores) == 3:
     )
     print(f"LASSO_RF vs MI_XGB: p-value = {p_lasso_rf_vs_mi_xgb:.5f}")
 
-    # 3. MI Random Forest vs MI XGBoost
+    # 3. MI_RF vs MI_XGB
     p_mi_rf_vs_mi_xgb = delong_roc_test(
         y_test_encoded, 
         model_scores['models/final_model_MI_RF.pkl'], 
@@ -192,14 +190,7 @@ if len(model_scores) == 3:
     
 else:
     print("Could not run DeLong's test because one or more models failed to load.")
-#%%
-
-import matplotlib.pyplot as plt
-from sklearn.metrics import roc_curve, auc
-
-# =====================================================================
-# 6. Plotting ROC Curves
-# =====================================================================
+#%% Plot ROC-AUC's in one figure
 
 def plot_combined_roc(y_true, model_scores):
     plt.figure(figsize=(10, 8))
@@ -212,17 +203,14 @@ def plot_combined_roc(y_true, model_scores):
         fpr, tpr, _ = roc_curve(y_true, scores)
         roc_auc = auc(fpr, tpr)
         
-        # Clean up model name for the legend (remove '.pkl' and underscores)
-        clean_name = model_name.replace('final_model_', '').replace('.pkl', '').upper()
+        clean_name = model_name.replace('final_model_', '').replace('.pkl', '').upper() # clean names for legend
         
-        # Plot the curve
         plt.plot(fpr, tpr, color=color, lw=2, 
                  label=f'{clean_name} (AUC = {roc_auc:.3f})')
 
     # Plot the random chance line
     plt.plot([0, 1], [0, 1], color='navy', lw=1, linestyle='--')
     
-    # Formatting
     plt.xlim([0.0, 1.0])
     plt.ylim([0.0, 1.05])
     plt.xlabel('1 - Specificity')
@@ -233,7 +221,6 @@ def plot_combined_roc(y_true, model_scores):
     
     plt.show()
 
-# Execute the plot if models were loaded
 if len(model_scores) > 0:
     plot_combined_roc(y_test_encoded, model_scores)
 else:
