@@ -21,7 +21,7 @@ The pipeline processes radiomic features from CT scans to distinguish between GI
     * `fs_RFE.py`: Recursive Feature Elimination.
     * `fs_mRMR.py`: Minimum Redundancy Maximum Relevance selection.
 * **Model Selection & Tuning**:
-    * `nested_cv_XGB.py`, `nested_cv_RF.py`, `nested_cv_SVM.py`: Nested cross-validation loops to evaluate feature selection and hyperparameter combinations with the classifier.
+    * `nested_cv_XGB.py`, `nested_cv_RF.py`: Nested cross-validation loops to evaluate feature selection and hyperparameter combinations with the classifier.
     * `training_RF.py`, `training_SVM.py`, `training_XGB.py`: Tunes hyperparameters for the top 3 models, trains on the 100% training set, and generates learning and validation curves.
 * **Evaluation**:
     * `wilcoxon_test.py`: Statistical comparison of nested CV results to identify the top 3 models.

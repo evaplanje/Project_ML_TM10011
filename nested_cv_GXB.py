@@ -88,6 +88,7 @@ for outer_fold, (train_idx, test_idx) in enumerate(outer_cv.split(X, y)):
                 X_train_inner = X_train_outer.iloc[inner_train_idx]
                 X_val_inner = X_train_outer.iloc[inner_val_idx]
 
+                # Normalisation using RobustScalar
                 scaler_inner = RobustScaler()
                 X_train_inner = pd.DataFrame(
                     scaler_inner.fit_transform(X_train_inner),
@@ -105,7 +106,7 @@ for outer_fold, (train_idx, test_idx) in enumerate(outer_cv.split(X, y)):
 
                 # Remove zero variance features and highly correlated features
                 X_train_inner, kept_var_features_inner = remove_zero_variance_features(X_train_inner, show_details=False)
-                X_val_inner = X_val_inner[kept_var_features_inner] # Apply var filter to val
+                X_val_inner = X_val_inner[kept_var_features_inner] 
 
                 X_train_inner, kept_features = remove_highly_correlated_features(
                     X_train_inner,
@@ -115,7 +116,7 @@ for outer_fold, (train_idx, test_idx) in enumerate(outer_cv.split(X, y)):
 
                 X_val_inner = X_val_inner[kept_features] # Apply corr filter to val
 
-                # 1. Apply Feature Selection
+                # Apply each feature selection method
                 if fs_config['method'] == 'lasso':
                     _, selected_features = fs_lasso(X_train_inner, y_train_inner, C=fs_config['param'])
                 elif fs_config['method'] == 'mrmr':
@@ -131,10 +132,11 @@ for outer_fold, (train_idx, test_idx) in enumerate(outer_cv.split(X, y)):
                 if not selected_features:
                     continue 
                 
+                # Keep only the selected features 
                 X_train_inner_sel = X_train_inner[selected_features]
                 X_val_inner_sel = X_val_inner[selected_features]
                 
-                # 2. Train XGBoost
+                # Train and evaluate XGBoost on the inner fold
                 xgb_model = XGBClassifier(**xgb_params, random_state = 7, n_jobs=-1, use_label_encoder=False, eval_metric='logloss')
                 xgb_model.fit(X_train_inner_sel, y_train_inner)
                 
@@ -144,11 +146,11 @@ for outer_fold, (train_idx, test_idx) in enumerate(outer_cv.split(X, y)):
             if not inner_scores:
                 continue
                 
-
+            # Calculate the average validation score of the inner loop
             avg_score = np.mean(inner_scores)
             method = fs_config['method']
 
-            # Update the dictionary if the current score beats the saved best score for that method
+            # Update the dictionary with the best configuration for the feature selection methods
             if avg_score > best_results[method]['score']:
                 best_results[method]['score'] = avg_score
                 best_results[method]['fs_config'] = fs_config
@@ -159,7 +161,7 @@ for outer_fold, (train_idx, test_idx) in enumerate(outer_cv.split(X, y)):
 
     # Outer loop: Evaluate the best model pipeline
     
-    # Correlation filtering
+    # Normalisation using RobustScalar
     scaler_outer = RobustScaler()
     X_train_outer_scaled = pd.DataFrame(
         scaler_outer.fit_transform(X_train_outer),
@@ -171,6 +173,8 @@ for outer_fold, (train_idx, test_idx) in enumerate(outer_cv.split(X, y)):
         columns=X_test_outer.columns,
         index=X_test_outer.index
     )
+
+    # Remove zero variance features and highly correlated features
     X_train_outer_var, kept_var_features_outer = remove_zero_variance_features(X_train_outer_scaled, show_details=False)
     X_test_outer_filtered = X_test_outer_scaled[kept_var_features_outer] # Apply var filter to test
 
@@ -183,15 +187,15 @@ for outer_fold, (train_idx, test_idx) in enumerate(outer_cv.split(X, y)):
     X_test_outer_corr = X_test_outer_filtered[kept_features_outer] # Apply corr filter to test
     y_train_outer_series = pd.Series(y_train_outer, index=X_train_outer_corr.index)
 
+    # Train and evaluate the best configuration for each feature selection method
     for method, result in best_results.items():
         best_fs_config = result['fs_config']
         best_xgb_params = result['xgb_params']
 
-        # Safety check: skip if the method didn't find any valid config in the inner loop
         if best_fs_config is None or best_xgb_params is None:
             continue
 
-        # Apply best Feature selection
+        # Apply the best feature selection method
         if method == 'lasso':
             _, final_features = fs_lasso(X_train_outer_corr, y_train_outer_series, C=best_fs_config['param'])
         elif method == 'mrmr':
@@ -208,6 +212,7 @@ for outer_fold, (train_idx, test_idx) in enumerate(outer_cv.split(X, y)):
             outer_score_acc = 0.0
 
         else:
+            # Train the final XGBoost model and evaluate it on the outer test(validation) set
             final_xgb = XGBClassifier(**best_xgb_params,random_state = 7, n_jobs=-1, eval_metric='logloss')
             final_xgb.fit(X_train_outer_corr[final_features], y_train_outer)
 

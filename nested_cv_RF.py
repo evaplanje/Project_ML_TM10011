@@ -45,7 +45,6 @@ rf_param_grid = {
 rf_keys, rf_values = zip(*rf_param_grid.items())
 rf_param_combinations = [dict(zip(rf_keys, v)) for v in itertools.product(*rf_values)]
 
-
 #%% Load and prepare data 
 
 GIST_data = load_data('GIST_radiomicFeatures.csv')
@@ -61,26 +60,17 @@ inner_cv = StratifiedKFold(n_splits=3, shuffle=True, random_state=7)
 
 outer_results = []
 
+# Start the outer loop
 for outer_fold, (train_idx, test_idx) in enumerate(outer_cv.split(X, y)):
     print(f"\n{'='*10} Outer Fold {outer_fold + 1} {'='*10}")
 
-    # 1. Split Outer Data
+    # Split the data into a train- and test(validation) set
     X_train_outer = X.iloc[train_idx]
     X_test_outer = X.iloc[test_idx]
     y_train_outer = y[train_idx]
     y_test_outer = y[test_idx]
 
-    # 2. Scale Outer Data (Fit ONLY on training data to prevent leakage)
-    # scaler = RobustScaler()
-    # X_train_outer_scaled = pd.DataFrame(
-    #     scaler.fit_transform(X_train_outer),
-    #     columns=X_train_outer.columns
-    # )
-    # X_test_outer_scaled = pd.DataFrame(
-    #     scaler.transform(X_test_outer),
-    #     columns=X_test_outer.columns
-    # )
-
+    # Track the best configuration for each feature selection method
     best_results = {
         'lasso': {'score': -1, 'fs_config': None, 'rf_params': None},
         'mrmr':  {'score': -1, 'fs_config': None, 'rf_params': None},
@@ -88,18 +78,18 @@ for outer_fold, (train_idx, test_idx) in enumerate(outer_cv.split(X, y)):
         'rfe':   {'score': -1, 'fs_config': None, 'rf_params': None}
     }
 
-    # ================= INNER LOOP (Hyperparameter Tuning) =================
+    # Inner loop: Hyperparameter Tuning
     for fs_config in fs_configs:
         for rf_params in rf_param_combinations:
             
             inner_scores = []
 
+            # Split the outer training set into inner train- and validation set
             for inner_train_idx, inner_val_idx in inner_cv.split(X_train_outer, y_train_outer):
-                
-                # Split Inner Data
                 X_train_inner = X_train_outer.iloc[inner_train_idx].copy()
                 X_val_inner = X_train_outer.iloc[inner_val_idx].copy()
 
+                # Normalisation using RobustScalar
                 scaler_inner = RobustScaler()
                 X_train_inner = pd.DataFrame(
                     scaler_inner.fit_transform(X_train_inner),
@@ -115,9 +105,9 @@ for outer_fold, (train_idx, test_idx) in enumerate(outer_cv.split(X, y)):
                 y_train_inner = pd.Series(y_train_outer[inner_train_idx], index=X_train_inner.index)
                 y_val_inner = pd.Series(y_train_outer[inner_val_idx], index=X_val_inner.index)
 
-                # Remove Highly Correlated Features (Fit on inner train, apply to inner val)
+                # Remove zero variance features and highly correlated features
                 X_train_inner, kept_var_features_inner = remove_zero_variance_features(X_train_inner, show_details=False)
-                X_val_inner = X_val_inner[kept_var_features_inner] # Apply var filter to val
+                X_val_inner = X_val_inner[kept_var_features_inner] 
 
                 X_train_inner, kept_features = remove_highly_correlated_features(
                     X_train_inner,
@@ -127,7 +117,7 @@ for outer_fold, (train_idx, test_idx) in enumerate(outer_cv.split(X, y)):
                 
                 X_val_inner = X_val_inner[kept_features] # Apply corr filter to val
 
-                # Execute Feature Selection
+                # Apply each feature selection method
                 if fs_config['method'] == 'lasso':
                     _, selected_features = fs_lasso(X_train_inner, y_train_inner, C=fs_config['param'])
                 elif fs_config['method'] == 'mrmr':
@@ -137,18 +127,17 @@ for outer_fold, (train_idx, test_idx) in enumerate(outer_cv.split(X, y)):
                 elif fs_config['method'] == 'rfe':
                     _, selected_features = perform_rfe(X_train_inner, y_train_inner, n_features_to_select=fs_config['param'])
 
-                # Validate selected features
                 selected_features = list(selected_features)
                 selected_features = [f for f in selected_features if f in X_train_inner.columns]
              
                 if not selected_features:
                     continue 
 
-                # Subset data to selected features
+                # Keep only the selected features 
                 X_train_sel = X_train_inner[selected_features]
                 X_val_sel = X_val_inner[selected_features]
 
-                # Train Random Forest and evaluate
+                # Train and evaluate Random Forest on the inner fold
                 rf = RandomForestClassifier(**rf_params, random_state=7, n_jobs=-1)
                 rf.fit(X_train_sel, y_train_inner)
                 
@@ -158,11 +147,12 @@ for outer_fold, (train_idx, test_idx) in enumerate(outer_cv.split(X, y)):
             # Calculate average score for this parameter combination
             if not inner_scores:
                 continue
-
+            
+            # Calculate the average validation score of the inner loop
             avg_score = np.mean(inner_scores)
             method = fs_config['method']
 
-            # Update the dictionary if the current score beats the saved best score for that method
+            # Update the dictionary with the best configuration for the feature selection methods
             if avg_score > best_results[method]['score']:
                 best_results[method]['score'] = avg_score
                 best_results[method]['fs_config'] = fs_config
@@ -171,7 +161,9 @@ for outer_fold, (train_idx, test_idx) in enumerate(outer_cv.split(X, y)):
     for method, result in best_results.items():
         print(f"Best Configuration ({method.upper()}) -> FS: {result['fs_config']}, Score: {result['score']:.4f}, rf Params: {result['rf_params']}")
 
-    # ================= OUTER EVALUATION (Model Validation) =================
+    # Outer loop: Evaluate the best model pipeline
+    
+    # Normalisation using RobustScalar
     scaler_outer = RobustScaler()
     X_train_outer_scaled = pd.DataFrame(
         scaler_outer.fit_transform(X_train_outer),
@@ -183,10 +175,10 @@ for outer_fold, (train_idx, test_idx) in enumerate(outer_cv.split(X, y)):
         columns=X_test_outer.columns,
         index=X_test_outer.index
     )
-    # Process outer training data with correlation removal
+
+    # Remove zero variance features and highly correlated features
     X_train_outer_corr, kept_var_features = remove_zero_variance_features(X_train_outer_scaled, show_details=False)
-    
-    # Apply the variance filter to the test set FIRST
+
     X_test_outer_filtered = X_test_outer_scaled[kept_var_features]
 
     X_train_outer_corr, kept_features_outer = remove_highly_correlated_features(
@@ -195,20 +187,18 @@ for outer_fold, (train_idx, test_idx) in enumerate(outer_cv.split(X, y)):
         show_details=False
     )
     
-    # Now apply the correlation filter to the test set
     X_test_outer_corr = X_test_outer_filtered[kept_features_outer]
     y_train_outer_series = pd.Series(y_train_outer, index=X_train_outer_corr.index)
 
-    # Evaluate the best configuration for EACH feature selection method
+    # Train and evaluate the best configuration for each feature selection method
     for method, result in best_results.items():
         best_fs_config = result['fs_config']
         best_rf_params = result['rf_params']
 
-        # Safety check: skip if the method didn't find any valid config in the inner loop
         if best_fs_config is None or best_rf_params is None:
             continue
 
-        # Apply best FS
+        # Apply the best feature selection method
         if method == 'lasso':
             _, final_features = fs_lasso(X_train_outer_corr, y_train_outer_series, C=best_fs_config['param'])
         elif method == 'mrmr':
@@ -224,6 +214,7 @@ for outer_fold, (train_idx, test_idx) in enumerate(outer_cv.split(X, y)):
             outer_score_auc = 0.5
             outer_score_acc = 0
         else:
+            # Train the final XGBoost model and evaluate it on the outer test(validation) set
             final_rf = RandomForestClassifier(**best_rf_params, random_state=7, n_jobs=-1)
             final_rf.fit(X_train_outer_corr[final_features], y_train_outer)
             
@@ -241,9 +232,9 @@ for outer_fold, (train_idx, test_idx) in enumerate(outer_cv.split(X, y)):
             'n_features_selected': len(final_features),
             'roc_auc_score': outer_score_auc,
             'accuracy_score': outer_score_acc
-
-})
-# ---------------- SAVE & DISPLAY RESULTS ----------------
+        })
+        
+#%% Final results 
 
 results_df = pd.DataFrame(outer_results)
 
@@ -261,9 +252,8 @@ if not results_df.empty:
     for index, row in summary_stats.iterrows():
         print(f"{index}: {row['mean']:.3f} +/- {row['std']:.3f}")
 
-# Save pickle (Wilcoxon)
+#%% Save pickle of the model scores
 all_model_scores = {}
-
 
 for _, row in results_df.iterrows():
     model_name = row['model_name']

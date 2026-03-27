@@ -17,7 +17,7 @@ from fs_mRMR import fs_mrmr
 from fs_mutualinformation import fs_mutualinformation
 from fs_RFE import perform_rfe
 
-#%% Settings for FS and XGBoost
+#%% Settings for FS and SVM
 
 # Feature selection tuning grids
 C_VALUES = [0.01, 0.02, 0.03]
@@ -58,26 +58,17 @@ inner_cv = StratifiedKFold(n_splits=3, shuffle=True, random_state=7)
 
 outer_results = []
 
+# Start the outer loop
 for outer_fold, (train_idx, test_idx) in enumerate(outer_cv.split(X, y)):
     print(f"\n{'='*10} Outer Fold {outer_fold + 1} {'='*10}")
 
-    # 1. Split Outer Data
+    # Split the data into a train- and test(validation) set
     X_train_outer = X.iloc[train_idx]
     X_test_outer = X.iloc[test_idx]
     y_train_outer = y[train_idx]
     y_test_outer = y[test_idx]
 
-    # # 2. Scale (NO leakage)
-    # scaler = RobustScaler()
-    # X_train_outer_scaled = pd.DataFrame(
-    #     scaler.fit_transform(X_train_outer),
-    #     columns=X_train_outer.columns
-    # )
-    # X_test_outer_scaled = pd.DataFrame(
-    #     scaler.transform(X_test_outer),
-    #     columns=X_test_outer.columns
-    # )
-
+    # Track the best configuration for each feature selection method
     best_results = {
         'lasso': {'score': -1, 'fs_config': None, 'svm_params': None},
         'mrmr':  {'score': -1, 'fs_config': None, 'svm_params': None},
@@ -85,7 +76,7 @@ for outer_fold, (train_idx, test_idx) in enumerate(outer_cv.split(X, y)):
         'rfe':   {'score': -1, 'fs_config': None, 'svm_params': None}
     }
 
-    # ================= INNER LOOP =================
+    # Inner loop: Hyperparameter Tuning
     for fs_config in fs_configs:
         for svm_params in svm_param_combinations:
 
@@ -93,10 +84,11 @@ for outer_fold, (train_idx, test_idx) in enumerate(outer_cv.split(X, y)):
 
             for inner_train_idx, inner_val_idx in inner_cv.split(X_train_outer, y_train_outer):
 
-                # Split inner
+                # Split the outer training set into inner train- and validation set
                 X_train_inner = X_train_outer.iloc[inner_train_idx].copy()
                 X_val_inner = X_train_outer.iloc[inner_val_idx].copy()
                 
+                # Normalisation using RobustScalar
                 scaler_inner = RobustScaler()
                 X_train_inner = pd.DataFrame(
                     scaler_inner.fit_transform(X_train_inner),
@@ -112,9 +104,9 @@ for outer_fold, (train_idx, test_idx) in enumerate(outer_cv.split(X, y)):
                 y_train_inner = pd.Series(y_train_outer[inner_train_idx], index=X_train_inner.index)
                 y_val_inner = pd.Series(y_train_outer[inner_val_idx], index=X_val_inner.index)
 
-                # Variance & Correlation removal INSIDE CV
+                # Remove zero variance features and highly correlated features
                 X_train_inner, kept_var_features_inner = remove_zero_variance_features(X_train_inner, show_details=False)
-                X_val_inner = X_val_inner[kept_var_features_inner] # Apply var filter to val
+                X_val_inner = X_val_inner[kept_var_features_inner] 
 
                 X_train_inner, kept_features = remove_highly_correlated_features(
                     X_train_inner,
@@ -122,9 +114,9 @@ for outer_fold, (train_idx, test_idx) in enumerate(outer_cv.split(X, y)):
                     show_details=False
                 )
 
-                X_val_inner = X_val_inner[kept_features] # Apply corr filter to val
+                X_val_inner = X_val_inner[kept_features]
 
-                # Feature selection
+                # Apply the best feature selection method
                 if fs_config['method'] == 'lasso':
                     _, selected_features = fs_lasso(X_train_inner, y_train_inner, C=fs_config['param'])
                 elif fs_config['method'] == 'mrmr':
@@ -138,11 +130,12 @@ for outer_fold, (train_idx, test_idx) in enumerate(outer_cv.split(X, y)):
 
                 if not selected_features:
                     continue
-
+                
+                # Keep only the selected features 
                 X_train_sel = X_train_inner[selected_features]
                 X_val_sel = X_val_inner[selected_features]
 
-                # Train SVM
+                # Train and evaluate SVM on the inner fold
                 svm = SVC(**svm_params, random_state= 7 ,probability=True)
                 svm.fit(X_train_sel, y_train_inner)
 
@@ -151,11 +144,12 @@ for outer_fold, (train_idx, test_idx) in enumerate(outer_cv.split(X, y)):
 
             if not inner_scores:
                 continue
-
+            
+            # Calculate the average validation score of the inner loop
             avg_score = np.mean(inner_scores)
             method = fs_config['method']
 
-            # Update the dictionary if the current score beats the saved best score for that method
+            # Update the dictionary with the best configuration for the feature selection methods
             if avg_score > best_results[method]['score']:
                 best_results[method]['score'] = avg_score
                 best_results[method]['fs_config'] = fs_config
@@ -164,7 +158,9 @@ for outer_fold, (train_idx, test_idx) in enumerate(outer_cv.split(X, y)):
     for method, result in best_results.items():
         print(f"Best Configuration ({method.upper()}) -> FS: {result['fs_config']}, Score: {result['score']:.4f}, SVM Params: {result['svm_params']}")
 
-    # ================= OUTER EVALUATION =================
+    # Outer loop: Evaluate the best model pipeline
+
+    # Normalisation using RobustScalar
     scaler_outer = RobustScaler()
     X_train_outer_scaled = pd.DataFrame(
         scaler_outer.fit_transform(X_train_outer),
@@ -176,7 +172,8 @@ for outer_fold, (train_idx, test_idx) in enumerate(outer_cv.split(X, y)):
         columns=X_test_outer.columns,
         index=X_test_outer.index
     )
-    # --- Correlation filtering ---
+
+    # Remove zero variance features and highly correlated features
     X_train_outer_var, kept_var_features_outer = remove_zero_variance_features(X_train_outer_scaled, show_details=False)
     X_test_outer_filtered = X_test_outer_scaled[kept_var_features_outer] # Apply var filter to test
 
@@ -189,16 +186,15 @@ for outer_fold, (train_idx, test_idx) in enumerate(outer_cv.split(X, y)):
     X_test_outer_corr = X_test_outer_filtered[kept_features_outer] # Apply corr filter to test
     y_train_outer_series = pd.Series(y_train_outer, index=X_train_outer_corr.index)
 
-    # Evaluate the best configuration for EACH feature selection method
+    # Train and evaluate the best configuration for each feature selection method
     for method, result in best_results.items():
         best_fs_config = result['fs_config']
         best_svm_params = result['svm_params']
 
-        # Safety check: skip if the method didn't find any valid config in the inner loop
         if best_fs_config is None or best_svm_params is None:
             continue
 
-        # Apply best FS
+        # Apply the best feature selection method
         if method == 'lasso':
             _, final_features = fs_lasso(X_train_outer_corr, y_train_outer_series, C=best_fs_config['param'])
         elif method == 'mrmr':
@@ -215,6 +211,7 @@ for outer_fold, (train_idx, test_idx) in enumerate(outer_cv.split(X, y)):
             outer_score_acc = 0
 
         else:
+            # Train the final SVM model and evaluate it on the outer test(validation) set
             final_svm = SVC(**best_svm_params, random_state= 7,  probability=True)
             final_svm.fit(X_train_outer_corr[final_features], y_train_outer)
 
@@ -236,7 +233,7 @@ for outer_fold, (train_idx, test_idx) in enumerate(outer_cv.split(X, y)):
 
         })
 
-# ---------------- RESULTS ----------------
+#%% Final results 
 results_df = pd.DataFrame(outer_results)
 
 print("\n" + "="*20 + " RESULTS " + "="*20)
@@ -253,9 +250,7 @@ if not results_df.empty:
     for index, row in summary_stats.iterrows():
         print(f"{index}: {row['mean']:.3f} +/- {row['std']:.3f}")
 
-
-
-# Save pickle (Wilcoxon)
+#%% Save pickle of the model scores
 all_model_scores = {}
 
 for _, row in results_df.iterrows():
