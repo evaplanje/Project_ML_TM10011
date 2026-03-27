@@ -8,10 +8,9 @@ Dear reader,
 
 To fully comprehend the model selection and training pipeline, we recommend a thorough reading of the paper: Classifying GIST and non-GIST cells in CT using a radiomics-based Machine Learning approach by Bergenhenegouwen, Kool, Mobach, and Planje.
 
-![ROC curve of top 3 models](images/ROC curve comparison - testset.png)
-
 The pipeline processes radiomic features from CT scans to distinguish between GIST and non-GIST cells. The workflow includes data splitting (80/20), preprocessing, feature selection, and evaluation via nested cross-validation. The top three performing models are hyperparameter-tuned, trained on the full training set, and finally validated on the test set using DeLong’s statistical analysis.
 
+![Pipeline](images/pipeline.png)
 
 ### Python Scripts
 * **`load_data.py`**: Loads and explores the `GIST_radiomicFeatures.csv` dataset.
