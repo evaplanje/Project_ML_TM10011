@@ -3,7 +3,7 @@
 import pandas as pd
 import os
 import numpy as np
-from load_data import load_data, split_pd, explore_data, plot_feature_pairs, plot_heatmap
+from load_data import load_data, split_pd, explore_data
 from scipy.stats.mstats import winsorize
 from sklearn.preprocessing import RobustScaler
 
@@ -11,7 +11,7 @@ from sklearn.preprocessing import RobustScaler
 
 def apply_normalization(df):
     """
-    It centers your data and scales it based on the 25th and 75th percentiles.
+    It centers the data and scales it based on the 25th and 75th percentiles
     
     Parameters
     ----------
@@ -24,12 +24,14 @@ def apply_normalization(df):
     """
     scaler = RobustScaler()
     scaled = scaler.fit_transform(df)
+
+    # Create a new DataFrame with the normalised feature values
     df_normalized = pd.DataFrame(scaled, columns=df.columns, index=df.index)
     return df_normalized, scaler
 
 def remove_zero_variance_features(df, show_details=True):
     """
-    Remove features with zero variance (all values identical).
+    Remove features with zero variance (the features are identical for all samples)
 
     Parameters
     ----------
@@ -42,8 +44,10 @@ def remove_zero_variance_features(df, show_details=True):
     Index
         Remaining feature names
     """
-
+    # Find all features with zero variance 
     zero_var_cols = df.columns[~(df != df.iloc[0]).any()]
+    
+    # Create a new DataFrame with the kept features
     df_reduced = df.drop(columns=zero_var_cols)
     kept_features = df_reduced.columns
 
@@ -56,13 +60,12 @@ def remove_zero_variance_features(df, show_details=True):
 
 def remove_highly_correlated_features(df, correlation_threshold=0.95, show_details=False):
     """
-    Remove features that are highly correlated with another feature.
+    Remove features that are highly correlated with another feature
 
     Parameters
     ----------
     df : pd.DataFrame
     correlation_threshold : float
-
 
     Returns
     -------
@@ -71,18 +74,21 @@ def remove_highly_correlated_features(df, correlation_threshold=0.95, show_detai
     Index
         Remaining feature names
     """
-
+    # Create a correlation matrix 
     corr_matrix = df.corr().abs()
 
+    # Extract the upper part of the correlation matrix to avoid duplicate pairs
     upper = corr_matrix.where(
         np.triu(np.ones(corr_matrix.shape), k=1).astype(bool)
     )
 
+    # Remove features with a correlation above the threshold
     corr_drop_cols = [
         column for column in upper.columns
         if any(upper[column] > correlation_threshold)
     ]
 
+    # Create a new DataFrame with the kept features
     df_reduced = df.drop(columns=corr_drop_cols)
     kept_features = df_reduced.columns
 

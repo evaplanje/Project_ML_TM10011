@@ -1,31 +1,40 @@
 
-#%%
-import pandas as pd
-import numpy as np
-from load_data import load_data, split_pd, explore_data, plot_feature_pairs, plot_heatmap
-from preprocessing import apply_normalization, remove_zero_variance_features
+#%% Imports
+
 from sklearn.linear_model import LogisticRegression
 from sklearn.feature_selection import RFE
 
-# %%
+#%% Definition feature selection RFE
+
 def perform_rfe(X_train, y_train, n_features_to_select=20):
+
     """
-    Perform true Recursive Feature Elimination (RFE) using Logistic Regression.
+    Performs Recursive Feature Elimination (RFE) using Logistic Regression to select the most relevant features.
+
+    Parameters
+    ----------
+    X_train : pd.DataFrame
+        Training data containing the input features.
+    y_train : pd.Series or array-like
+        Training labels.
+    n_features_to_select : int, default=20
+        Number of features to select.
+
+    Returns
+    -------
+    None
+        No reduced DataFrame is returned.
+    selected_features : list of str
+        List of selected feature names.
     """
-    # 1. Define the base model (using standard LR to save computation time during RFE)
+    # Initialize and apply RFE using Logistic Regression to select the most relevant features
     base_model = LogisticRegression(solver = 'liblinear',max_iter=10000, random_state=7)
-    
-    # 2. Initialize RFE
-    rfe = RFE(estimator=base_model, n_features_to_select=n_features_to_select, step=1)
-    
-    # 3. Fit RFE to the data (this runs the recursive loop)
+    rfe = RFE(estimator=base_model, n_features_to_select=n_features_to_select, step=1) 
     rfe.fit(X_train, y_train)
     
-    # 4. Get the names of the selected features using the boolean mask (support_)
+    # Create a new list with the selected features by mRMR
     selected_features = X_train.columns[rfe.support_].tolist()
 
-    
-    # Return a placeholder (or the dataframe) AND the list, so it unpacks correctly
     return None, selected_features
 
 

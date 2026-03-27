@@ -18,14 +18,13 @@ from fs_mRMR import fs_mrmr
 from fs_mutualinformation import fs_mutualinformation
 from fs_RFE import perform_rfe
 
-#%% ---------------- SETTINGS ----------------
+#%% Settings for FS and Random Forest
 
+# Feature selection tuning grids
 C_VALUES = [0.01, 0.02, 0.03]
 K_VALUES = [10, 15, 20]
 
-# C_VALUES = [0.02]
-# K_VALUES = [15]
-
+# Feature Selection configurations
 fs_configs = (
     [{'method': 'lasso', 'param': c} for c in C_VALUES] +
     [{'method': 'mrmr', 'param': k} for k in K_VALUES] +
@@ -33,6 +32,7 @@ fs_configs = (
     [{'method': 'rfe', 'param': k} for k in K_VALUES]
 )
 
+# Random Forest hyperparameter grid
 rf_param_grid = {
     'n_estimators': [100, 200, 300],       
     'max_depth': [3, 5, 7],      
@@ -41,35 +41,23 @@ rf_param_grid = {
     'max_features': ['sqrt', 'log2', 0.3]  
 }
 
-# rf_param_grid = {
-#     'n_estimators': [200],
-#     'max_depth': [5],
-#     'min_samples_split': [6],
-#     'min_samples_leaf': [3],
-#     'max_features': ['sqrt']
-# }
-
 # Create combinations
 rf_keys, rf_values = zip(*rf_param_grid.items())
 rf_param_combinations = [dict(zip(rf_keys, v)) for v in itertools.product(*rf_values)]
 
 
-#%% ---------------- LOAD & PREPARE DATA ----------------
+#%% Load and prepare data 
 
 GIST_data = load_data('GIST_radiomicFeatures.csv')
 GIST_train, GIST_test, y_train, y_test = split_pd(GIST_data, False)
 
-
 X = GIST_train
 y = y_train.values
+#%% Perform the Nested Cross-Validation (NCV)
 
-
-#%% ---------------- NESTED CROSS-VALIDATION ----------------
-
-# Outer loop evaluates model performance; Inner loop tunes hyperparameters
+# Define outer and inner stratified K-fold cross-validation for NCV
 outer_cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=7)
 inner_cv = StratifiedKFold(n_splits=3, shuffle=True, random_state=7)
-
 
 outer_results = []
 

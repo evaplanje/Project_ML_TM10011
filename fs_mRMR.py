@@ -1,58 +1,54 @@
-import pandas as pd
-import numpy as np
-from load_data import load_data, split_pd, explore_data, plot_feature_pairs, plot_heatmap
-from preprocessing import apply_normalization, remove_zero_variance_features
-from sklearn.linear_model import LogisticRegression 
-from sklearn.pipeline import Pipeline
-from sklearn.pipeline import Pipeline
-import pandas as pd
-from sklearn.datasets import make_classification
-from preprocessing import remove_zero_variance_features
+#%% Imports
 
-#%%
 import pandas as pd
 from mrmr import mrmr_classif
 
+
+#%% Definition feature selection mRMR
+
 def fs_mrmr(X_train, y_train, K=10, show_details=False):
     """
-    Voert mRMR feature selectie uit op de trainingsset en past
-    dezelfde selectie toe op de testset.
+    Performs mRMR feature selection on the training set and applies
+    the same selection to the test set.
 
     Parameters
     ----------
     X_train : pd.DataFrame
-        Trainingsdata.
-    y_train : pd.Series of array-like
-        Trainingslabels.
+        Training data.
+    y_train : pd.Series or array-like
+        Training labels.
     X_test : pd.DataFrame, optional
-        Testdata waarop dezelfde featureselectie wordt toegepast.
+        Test data to which the same feature selection is applied.
     K : int, default=10
-        Aantal te selecteren features.
+        Number of features to select.
     show_details : bool, default=True
-        Print geselecteerde features.
+        Whether to print the selected features.
 
     Returns
     -------
     selected_features : list
-        Geselecteerde features.
+        Selected feature names.
     X_train_selected : pd.DataFrame
-        Trainingsdata met geselecteerde features.
+        Training data with selected features.
     X_test_selected : pd.DataFrame, optional
-        Testdata met geselecteerde features.
+        Test data with selected features.
     """
 
+    # Ensure that X_train and y_train are in pandas DataFrame and Series format
     if not isinstance(X_train, pd.DataFrame):
         X_train = pd.DataFrame(X_train)
 
     if not isinstance(y_train, pd.Series):
         y_train = pd.Series(y_train)
 
+    # Select features with the mrmr function
     selected_features = mrmr_classif(X=X_train, y=y_train, K=K, show_progress=False)
 
+    # Create a new DataFrame with the selected features by mRMR
     X_train_selected = X_train[selected_features]
 
     if show_details:
-        print(f"Geselecteerde {K} features met mRMR:")
+        print(f"Selected {K} features with mRMR:")
         print(selected_features)
 
     return selected_features, X_train_selected

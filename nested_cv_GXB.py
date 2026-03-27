@@ -18,22 +18,19 @@ from fs_mRMR import fs_mrmr
 from fs_mutualinformation import fs_mutualinformation
 from fs_RFE import perform_rfe
 
-#%% ---------------- SETTINGS ----------------
+#%% Settings for FS and XGBoost
 
-# Set your feature selection tuning grids here
+# Feature selection tuning grids
 C_VALUES = [0.01, 0.02, 0.03]
 K_VALUES = [10, 15, 20]
 
-# C_VALUES = [0.02]
-# K_VALUES = [15]
-
-# Build a list of all Feature Selection configurations to test
+# Feature Selection configurations
 fs_configs = [{'method': 'lasso', 'param': c} for c in C_VALUES] + \
              [{'method': 'mrmr', 'param': k} for k in K_VALUES] + \
              [{'method': 'mi', 'param': k} for k in K_VALUES] + \
              [{'method': 'rfe', 'param': k} for k in K_VALUES]
 
-# XGBoost specific hyperparameter grid (tailored for small datasets)
+# XGBoost hyperparameter grid
 xgb_param_grid = {
     'n_estimators': [50, 100, 200],      # Number of trees
     'max_depth': [3, 4, 5],              # Keep trees shallow to prevent overfitting
@@ -42,18 +39,11 @@ xgb_param_grid = {
     'colsample_bytree': [0.6, 0.8, 1.0]  # Fraction of features used per tree
 }
 
-# xgb_param_grid = {
-#    'n_estimators': [100],
-#    'max_depth': [4],     
-#    'learning_rate': [0.05],
-#    'subsample': [0.8],      
-#    'colsample_bytree': [0.8]
-# }
-
+# Create combinations
 xgb_keys, xgb_values = zip(*xgb_param_grid.items())
 xgb_param_combinations = [dict(zip(xgb_keys, v)) for v in itertools.product(*xgb_values)]
 
-#%% ---------------- LOAD & PREPROCESS ----------------
+#%% Load and prepare data 
 
 GIST_data = load_data('GIST_radiomicFeatures.csv')
 GIST_train, GIST_test, y_train, y_test = split_pd(GIST_data, False)
@@ -63,25 +53,23 @@ y = y_train.values
 
 label_encoder = LabelEncoder()
 y = label_encoder.fit_transform(y)
+#%% Perform the Nested Cross-Validation (NCV)
 
-#%% ---------------- NESTED CV ----------------
-
+# Define outer and inner stratified K-fold cross-validation for NCV
 outer_cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=7)
 inner_cv = StratifiedKFold(n_splits=3, shuffle=True, random_state=7)
 
-
 outer_results = []
 
+# Start the outer loop
 for outer_fold, (train_idx, test_idx) in enumerate(outer_cv.split(X, y)):
     print(f"\n--- Starting Outer Fold {outer_fold + 1} ---")
     
+    # Split the data into a train- and test(validation) set
     X_train_outer, X_test_outer = X.iloc[train_idx], X.iloc[test_idx]
     y_train_outer, y_test_outer = y[train_idx], y[test_idx]
-    
-    # scaler = RobustScaler()
-    # X_train_outer_scaled = pd.DataFrame(scaler.fit_transform(X_train_outer), columns=X_train_outer.columns)
-    # X_test_outer_scaled = pd.DataFrame(scaler.transform(X_test_outer), columns=X_test_outer.columns)
-    
+
+    # Track the best configuration for each feature selection method
     best_results = {
         'lasso': {'score': -1, 'fs_config': None, 'xgb_params': None},
         'mrmr':  {'score': -1, 'fs_config': None, 'xgb_params': None},
@@ -89,12 +77,13 @@ for outer_fold, (train_idx, test_idx) in enumerate(outer_cv.split(X, y)):
         'rfe':   {'score': -1, 'fs_config': None, 'xgb_params': None}
     }
 
-    # --- INNER LOOP: Hyperparameter Tuning ---
+    # Inner loop: Hyperparameter Tuning
     for fs_config in fs_configs:
         for xgb_params in xgb_param_combinations:
             
             inner_scores = []
             
+            # Split the outer training set into inner train- and validation set
             for inner_train_idx, inner_val_idx in inner_cv.split(X_train_outer, y_train_outer):
                 X_train_inner = X_train_outer.iloc[inner_train_idx]
                 X_val_inner = X_train_outer.iloc[inner_val_idx]
@@ -114,7 +103,7 @@ for outer_fold, (train_idx, test_idx) in enumerate(outer_cv.split(X, y)):
                 y_train_inner = pd.Series(y_train_outer[inner_train_idx], index=X_train_inner.index)
                 y_val_inner = pd.Series(y_train_outer[inner_val_idx], index=X_val_inner.index)
 
-                # Variance & Correlation removal INSIDE CV
+                # Remove zero variance features and highly correlated features
                 X_train_inner, kept_var_features_inner = remove_zero_variance_features(X_train_inner, show_details=False)
                 X_val_inner = X_val_inner[kept_var_features_inner] # Apply var filter to val
 
@@ -168,9 +157,9 @@ for outer_fold, (train_idx, test_idx) in enumerate(outer_cv.split(X, y)):
     for method, result in best_results.items():
         print(f"Best Configuration ({method.upper()}) -> FS: {result['fs_config']}, Score: {result['score']:.4f}, xgb Params: {result['xgb_params']}")
 
-    # --- OUTER LOOP: Evaluate the Best Model Pipeline ---
+    # Outer loop: Evaluate the best model pipeline
     
-    # --- Correlation filtering ---
+    # Correlation filtering
     scaler_outer = RobustScaler()
     X_train_outer_scaled = pd.DataFrame(
         scaler_outer.fit_transform(X_train_outer),
@@ -202,7 +191,7 @@ for outer_fold, (train_idx, test_idx) in enumerate(outer_cv.split(X, y)):
         if best_fs_config is None or best_xgb_params is None:
             continue
 
-        # Apply best FS
+        # Apply best Feature selection
         if method == 'lasso':
             _, final_features = fs_lasso(X_train_outer_corr, y_train_outer_series, C=best_fs_config['param'])
         elif method == 'mrmr':
@@ -239,7 +228,7 @@ for outer_fold, (train_idx, test_idx) in enumerate(outer_cv.split(X, y)):
 
         }) 
 
-#---------------- FINAL RESULTS ----------------
+#%% Final results 
 results_df = pd.DataFrame(outer_results)
 
 print("\n" + "="*20 + " RESULTS " + "="*20)
@@ -256,8 +245,7 @@ if not results_df.empty:
     for index, row in summary_stats.iterrows():
         print(f"{index}: {row['mean']:.3f} +/- {row['std']:.3f}")
 
-
-# Save pickle (Wilcoxon)
+#%% Save pickle of the model scores
 all_model_scores = {}
 
 for _, row in results_df.iterrows():
