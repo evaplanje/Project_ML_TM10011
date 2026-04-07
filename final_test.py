@@ -66,13 +66,13 @@ def compute_midrank(x):
     J = np.argsort(x)
     Z = x[J]
     N = len(x)
-    T = np.zeros(N, dtype=float)
+    l = np.zeros(N, dtype=float)
     i = 0
     while i < N:
         j = i
-        while j < N and Z[j] == Z[i]:
+        while j < N and Z[j] == Z[i]:           # handles ties
             j += 1
-        T[i:j] = 0.5 * (i + j - 1)
+        T[i:j] = 0.5 * (i + j - 1)              # gedeelde plek wordt x.5
         i = j
     T2 = np.empty(N, dtype=float)
     T2[J] = T + 1
