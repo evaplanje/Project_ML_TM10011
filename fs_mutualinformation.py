@@ -35,13 +35,14 @@ def fs_mutualinformation(df, labels, k, showdetails=False):
         labels, 
         discrete_features=False,
         random_state=7
-    )
+    ) #voor elke feature wordt een MI score berekend, die aangeeft hoe sterk de afhankelijkheid is tussen die feature en de target labels (GIST of non-GIST)
+    # een hoge MI score geeft een sterke relatie aan tussen de feature en de target
 
     # Create a new DataFrame with all features and the MI scores, sorted by importance
     mi_df = pd.DataFrame({
         'feature': df.columns,
         'mi_score': mi_scores
-    }).sort_values(by='mi_score', ascending=False).reset_index(drop=True)
+    }).sort_values(by='mi_score', ascending=False).reset_index(drop=True) #de belangrijkste features worden hierbij bovenaan gezet 
 
     # Select the top k features in the DataFrame
     selected_features_mi = mi_df['feature'].head(k).tolist()

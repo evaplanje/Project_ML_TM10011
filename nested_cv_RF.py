@@ -34,11 +34,14 @@ fs_configs = (
 
 # Random Forest hyperparameter grid
 rf_param_grid = {
-    'n_estimators': [100, 200, 300],       
-    'max_depth': [3, 5, 7],      
-    'min_samples_split': [4, 6, 10],     
-    'min_samples_leaf': [2, 5, 10],       
-    'max_features': ['sqrt', 'log2', 0.3]  
+    'n_estimators': [100, 200, 300],   #aantal bomen in het bos    
+    'max_depth': [3, 5, 7],      #de maximale diepte van elke boom, waarbij een diepere boom leidt tot een complexer model (en risico op overfitting)
+    'min_samples_split': [4, 6, 10],     #het minimum aantal samples dat nodig is om een interne leaf node te splitsen. Hoger getal kan leiden tot eenvoudiger model en minder overfitting
+    'min_samples_leaf': [2, 5, 10],       #het minimum aantal samples dat nodig is om een leaf node te vormen
+    'max_features': ['sqrt', 'log2', 0.3]  #het aantal features dat wordt overwogen bij het zoeken naar de beste split -> Het kiezen van een kleiner aantal features kan leiden tot een eenvoudiger model en mindere kans op overfitting
+    #sqrt betekent dat het aantal features dat wordt overwogen gelijk is aan de vierkantswortel van het totale aantal features, 
+    #log2 betekent dat het aantal features dat wordt overwogen gelijk is aan de logaritme van het totale aantal features, 
+    #en 0.3 betekent dat 30% van de features worden overwogen
 }
 
 # Create combinations

@@ -24,7 +24,7 @@ for model, scores in all_model_scores.items():
 
 #%% Bonferroni correction
 n_comparisons = len(list(combinations(all_model_scores.keys(), 2)))
-alpha_corrected = 0.05 / n_comparisons
+alpha_corrected = 0.05 / n_comparisons #De Bonferroni-correctie is bedoeld om het risico op fout-positieven (Type I fouten) te verkleinen bij meerdere vergelijkingen
 
 print(f"\nAantal vergelijkingen: {n_comparisons}")
 print(f"Bonferroni gecorrigeerde alpha: {alpha_corrected:.5f}")
@@ -35,21 +35,24 @@ results = []
 win_counts = {model: 0 for model in all_model_scores.keys()}  # Count for wins per model
 
 # Perform pairwise comparisons between all model combinations
-for (model_a, scores_a), (model_b, scores_b) in combinations(all_model_scores.items(), 2):
-    
+for (model_a, scores_a), (model_b, scores_b) in combinations(all_model_scores.items(), 2): #de wilcoxin wordt uitgevoerd om te bepalen of er een statistisch significant verschil is tussen de prestaties van twee modellen, 
+    #waarbij scores_a en scores_b de gemiddelde prestatiescores (in dit geval AUC)zijn voor respectievelijk model_a en model_b over de verschillende cross-validation folds. 
+    #De test vergelijkt de verschillen tussen de twee sets scores en bepaalt of deze verschillen statistisch significant zijn, rekening houdend met de Bonferroni-correctie voor meerdere vergelijkingen.
+    #de combinations functie zorgt ervoor dat elke unieke combinatie van modellen slechts één keer wordt vergeleken
+
     differences = np.array(scores_a) - np.array(scores_b)
     
     if np.all(differences == 0):
         continue
     
-    stat, p = wilcoxon(scores_a, scores_b)
+    stat, p = wilcoxon(scores_a, scores_b) #de wilxocon test wordt uitgevoerd op de auc scores van de twee modellen 
 
-    winner = model_a if np.mean(scores_a) > np.mean(scores_b) else model_b
+    winner = model_a if np.mean(scores_a) > np.mean(scores_b) else model_b #hier wordt bepaald welk model gemiddeld beter presteert op basis van de ROC AUC
     
     results.append({
         'model_a':     model_a,
         'model_b':     model_b,
-        'mean_auc_a':  np.mean(scores_a),
+        'mean_auc_a':  np.mean(scores_a), #de gemiddelde auc score over de 5 folds van de outer loop 
         'mean_auc_b':  np.mean(scores_b),
         'p_value':     p,
         'significant': p < alpha_corrected,

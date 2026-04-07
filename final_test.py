@@ -34,7 +34,7 @@ class CorrelationFilter(BaseEstimator, TransformerMixin):
 
 # Transformer to perform feature selection using MI
 class MIFilter(BaseEstimator, TransformerMixin):
-    def __init__(self, num_features=10):
+    def __init__(self, num_features=10): 
         self.num_features = num_features
         self.selected_features_ = None
     def fit(self, X, y):
@@ -60,6 +60,9 @@ class LASSOFilter(BaseEstimator, TransformerMixin):
 #%% #%% Implementation of DeLong's test for comparing ROC-AUC
 
 def compute_midrank(x):
+    # De functie berekent de midrank van een lijst van waarden. 
+    # De midrank wordt gebruikt om gelijkwaardige waarden (die dezelfde waarde hebben) te rangschikken, wat belangrijk is voor DeLong's test.
+    # Een midrank betekent dat als meerdere waarden gelijk zijn, ze de gemiddelde rang krijgen in plaats van een vaste rang. Bijvoorbeeld, als de eerste en tweede waarde gelijk zijn, krijgen ze beide de gemiddelde rang van 1 en 2 (d.w.z. de rang is (1+2)/2 = 1.5)
     J = np.argsort(x)
     Z = x[J]
     N = len(x)
@@ -76,38 +79,40 @@ def compute_midrank(x):
     return T2
 
 def fastDeLong(predictions_sorted_transposed, label_1_count):
-    m = label_1_count
-    n = predictions_sorted_transposed.shape[1] - m
-    positive_examples = predictions_sorted_transposed[:, :m]
-    negative_examples = predictions_sorted_transposed[:, m:]
-    tx = np.empty([positive_examples.shape[0], m], dtype=float)
-    ty = np.empty([negative_examples.shape[0], n], dtype=float)
-    tz = np.empty([predictions_sorted_transposed.shape[0], m + n], dtype=float)
-    for r in range(predictions_sorted_transposed.shape[0]):
+    #predictions_sorted_transoped is een array waarin de voorspellingen van twee modellen voor elk datapunt staan, die al gesorteerd zijn op de ground truth (echte labels)
+    #label 1 count is het aantal labels met GIST
+    m = label_1_count #aantal GIST samples
+    n = predictions_sorted_transposed.shape[1] - m #aantal non-GIST samples 
+    positive_examples = predictions_sorted_transposed[:, :m] #de voorspeldingen van model 1 en model 2 voor de GIST samples
+    negative_examples = predictions_sorted_transposed[:, m:] #de voorspellingen van model 1 en model 2 voor de non-GIST samples
+    tx = np.empty([positive_examples.shape[0], m], dtype=float) #hier wordt een lege array gemaakt waarin de midranks van de positieve voorbeelden (GIST samples) zullen worden opgeslagen, waarbij de rijen overeenkomen met de verschillende modellen en de kolommen overeenkomen met de GIST samples
+    ty = np.empty([negative_examples.shape[0], n], dtype=float) #hier wordt een lege array gemaakt waarin de midranks van de negatieve voorbeelden (non-GIST samples) zullen worden opgeslagen, waarbij de rijen overeenkomen met de verschillende modellen en de kolommen overeenkomen met de non-GIST samples
+    tz = np.empty([predictions_sorted_transposed.shape[0], m + n], dtype=float) #hier wordt een lege array gemaakt waarin de midranks van alle voorspellingen (zowel GIST als non-GIST) zullen worden opgeslagen, waarbij de rijen overeenkomen met de verschillende modellen en de kolommen overeenkomen met alle samples (GIST + non-GIST)
+    for r in range(predictions_sorted_transposed.shape[0]): #hier wordt de loop uitgevoerd voor de verschillende modellen en de midranks worden berekend voor de positieve voorbeelden, negatieve voorbeelden en alle voorspellingen van elk model, en deze worden opgeslagen in de respectievelijke arrays (tx, ty, tz)
         tx[r, :] = compute_midrank(positive_examples[r, :])
         ty[r, :] = compute_midrank(negative_examples[r, :])
         tz[r, :] = compute_midrank(predictions_sorted_transposed[r, :])
-    aucs = tz[:, :m].sum(axis=1) / m / n - float(m + 1.0) / 2.0 / n
-    v01 = (tz[:, :m] - tx[:, :]) / n
-    v10 = 1.0 - (tz[:, m:] - ty[:, :]) / m
-    sx = np.cov(v01)
-    sy = np.cov(v10)
-    delongcov = sx / m + sy / n
+    aucs = tz[:, :m].sum(axis=1) / m / n - float(m + 1.0) / 2.0 / n #hier wordt de ROC AUC berekend voor elk model op basis van de midranks van de voorspellingen, waarbij de som van de midranks (de ranking van de voorspelling) van de positieve voorbeelden (GIST samples) wordt gedeeld door het totale aantal positieve x negatieve samples, en er wordt gecorrigeerd voor de rangorde van de voorspellingen
+    v01 = (tz[:, :m] - tx[:, :]) / n #hier wordt de variantie van de AUC berekend voor de positieve voorbeelden (GIST samples), waarbij de midranks van alle voorspellingen worden vergeleken met de midranks van de positieve voorbeelden, en dit wordt gedeeld door het aantal negatieve voorbeelden
+    v10 = 1.0 - (tz[:, m:] - ty[:, :]) / m #hier wordt de variantie van de AUC berekend voor de negatieve voorbeelden (non-GIST samples), waarbij de midranks van alle voorspellingen worden vergeleken met de midranks van de negatieve voorbeelden, en dit wordt gedeeld door het aantal positieve voorbeelden
+    sx = np.cov(v01) #hier wordt de covariantie van de variantie van de AUC voor de positieve voorbeelden berekend
+    sy = np.cov(v10) #hier wordt de covariantie van de variantie van de AUC voor de negatieve voorbeelden berekend
+    delongcov = sx / m + sy / n #hier wordt de totale covariantie van de AUC berekend door de covariantie van de variantie voor de positieve voorbeelden te delen door het aantal positieve voorbeelden, en de covariantie van de variantie voor de negatieve voorbeelden te delen door het aantal negatieve voorbeelden, en deze twee worden bij elkaar opgeteld om de totale covariantie van de AUC te verkrijgen
     return aucs, delongcov
 
 def calc_pvalue(aucs, sigma):
-    l = np.array([[1, -1]])
-    z = np.abs(np.diff(aucs)) / np.sqrt(np.dot(np.dot(l, sigma), l.T))
+    l = np.array([[1, -1]]) #hier wordt een vector gemaakt die wordt gebruikt om het verschil tussen de AUC's van twee modellen te berekenen
+    z = np.abs(np.diff(aucs)) / np.sqrt(np.dot(np.dot(l, sigma), l.T)) #hier wordt de z-score berekend voor het verschil tussen de AUC's van twee modellen door het verschil in AUC's te delen door de standaardafwijking
     return 10 ** (np.log10(2) + scipy.stats.norm.logsf(z, loc=0, scale=1)[0, 0])
 
 def delong_roc_test(ground_truth, predictions_one, predictions_two):
-    order = np.lexsort((ground_truth,))
+    order = np.lexsort((ground_truth,)) #hier wordt een volgorde bepaald op basis van de ground truth labels, zodat de voorspellingen van beide modellen worden gesorteerd op dezelfde manier als de echte labels
     ground_truth = ground_truth[order]
     predictions_one = predictions_one[order]
     predictions_two = predictions_two[order]
-    label_1_count = np.sum(ground_truth == ground_truth[len(ground_truth) - 1])
-    predictions_sorted_transposed = np.vstack((predictions_one, predictions_two))
-    aucs, delongcov = fastDeLong(predictions_sorted_transposed, label_1_count)
+    label_1_count = np.sum(ground_truth == ground_truth[len(ground_truth) - 1]) #hier wordt het aantal GIST labels geteld
+    predictions_sorted_transposed = np.vstack((predictions_one, predictions_two)) #hier worden de voorspellingen van beide modellen gestapeld in een array, waarbij de rijen overeenkomen met de verschillende modellen en de kolommen overeenkomen met de samples
+    aucs, delongcov = fastDeLong(predictions_sorted_transposed, label_1_count) #hier wordt de fastdelong functie aangeroepen om de AUC's en de covariantie van de AUC's te berekenen voor beide modellen
     return calc_pvalue(aucs, delongcov)
 
 #%% Load and prepare data 
@@ -134,12 +139,12 @@ print("\n=== MODEL EVALUATION ===")
 for model_file in models_to_test:
     try:
         with open(model_file, 'rb') as f:
-            pipe = pickle.load(f)
+            pipe = pickle.load(f) #hier wordt het getrainde model geladen uit de pickle file, inclusief alle preprocessing stappen en feature selectie die tijdens het trainen zijn toegepast
             
         y_pred = pipe.predict(GIST_test)
         
         if hasattr(pipe, "predict_proba"):
-            y_score = pipe.predict_proba(GIST_test)[:, 1]
+            y_score = pipe.predict_proba(GIST_test)[:, 1] #de kans dat een sample behoort tot de GIST groep wordt voorspeld, waarbij de tweede kolom (index 1) wordt gebruikt omdat dit overeenkomt met de positieve klasse (GIST)
         else:
             y_score = pipe.decision_function(GIST_test)
             

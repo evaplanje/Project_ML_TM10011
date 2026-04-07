@@ -42,10 +42,10 @@ def fs_mrmr(X_train, y_train, K=10, show_details=False):
         y_train = pd.Series(y_train)
 
     # Select features with the mrmr function
-    selected_features = mrmr_classif(X=X_train, y=y_train, K=K, show_progress=False)
+    selected_features = mrmr_classif(X=X_train, y=y_train, K=K, show_progress=False) #hier worden de K beste features geselecteerd door middel van minimum redundancy (weinig overlap met andere features) en maximum relevance (sterke correlatie met de target y_train)
 
     # Create a new DataFrame with the selected features by mRMR
-    X_train_selected = X_train[selected_features]
+    X_train_selected = X_train[selected_features] #houdt alleen de geselecteerde features over in de training set
 
     if show_details:
         print(f"Selected {K} features with mRMR:")

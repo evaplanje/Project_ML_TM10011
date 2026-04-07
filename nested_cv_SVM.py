@@ -33,9 +33,9 @@ fs_configs = (
 
 # SVM hyperparameter grid
 SVM_param_grid = {
-    'C': [0.1, 1, 10],
-    'kernel': ['linear', 'rbf'],
-    'gamma': ['scale', 'auto']
+    'C': [0.1, 1, 10], #hoe goed past het model op de trainingsdata aan. Hoe hoger de C, hoe beter het model past op de trainingsdata, maar ook hoe groter de kans op overfitting. Bij een lage C waarde is er meer regularisatie en is het model eenvoudiger, wat kan helpen bij het voorkomen van overfitting.
+    'kernel': ['linear', 'rbf'], #de kernel functie die wordt gebruikt om de data te transformeren naar een hogere dimensionale ruimte. Lineair is geen transformatie, terwijl RBF non-lineair is en complexere relaties kan modelleren 
+    'gamma': ['scale', 'auto'] #met de gamma wordt de invloed van de kernelfunctie bepaald, het bepaalt de vorm ervan. scale stelt gamma automatisch in op 1/n_features en auto stelt gamma in op 1/n_samples. Hoe kleiner de gamma, hoe groter de invloed van individuele datapunten. Een kleine gamma waarde kan leiden tot een gladder model, wat risico op overfitting vermindert.
 }
 
 # Create combinations

@@ -22,8 +22,8 @@ def apply_normalization(df):
     pd.DataFrame
         normalized dataframe
     """
-    scaler = RobustScaler()
-    scaled = scaler.fit_transform(df)
+    scaler = RobustScaler() #centreren van de data rondom het mediaan en schaalt de data op basis van de interkwartielafstand (IQR) tussen het 25e en 75e percentiel
+    scaled = scaler.fit_transform(df) #fit leert de mediaan en de IQR per kolom, transform schaalt de waardes 
 
     # Create a new DataFrame with the normalised feature values
     df_normalized = pd.DataFrame(scaled, columns=df.columns, index=df.index)
@@ -45,10 +45,10 @@ def remove_zero_variance_features(df, show_details=True):
         Remaining feature names
     """
     # Find all features with zero variance 
-    zero_var_cols = df.columns[~(df != df.iloc[0]).any()]
+    zero_var_cols = df.columns[~(df != df.iloc[0]).any()] #hier wordt per kolom elke rij vergeleken met de waarde uit rij 1. Als er geen enkele rij verschilt van de eerste rij, dan heeft die kolom een variance van 0 en wordt deze toegevoegd aan zero_var_cols
     
     # Create a new DataFrame with the kept features
-    df_reduced = df.drop(columns=zero_var_cols)
+    df_reduced = df.drop(columns=zero_var_cols) #hier worden de zero variance kolommen verwijderd 
     kept_features = df_reduced.columns
 
     if show_details:
@@ -75,7 +75,7 @@ def remove_highly_correlated_features(df, correlation_threshold=0.95, show_detai
         Remaining feature names
     """
     # Create a correlation matrix 
-    corr_matrix = df.corr().abs()
+    corr_matrix = df.corr().abs() #de correlatie tussen elke feature wordt bepaald en gevoegd in een matrix
 
     # Extract the upper part of the correlation matrix to avoid duplicate pairs
     upper = corr_matrix.where(
@@ -86,10 +86,10 @@ def remove_highly_correlated_features(df, correlation_threshold=0.95, show_detai
     corr_drop_cols = [
         column for column in upper.columns
         if any(upper[column] > correlation_threshold)
-    ]
+    ] #hier wordt per kolom gekeken of er een correlatie is met een andere feature die hoger is dan de threshold. Als dat het geval is, wordt die feature toegevoegd aan corr_drop_cols
 
     # Create a new DataFrame with the kept features
-    df_reduced = df.drop(columns=corr_drop_cols)
+    df_reduced = df.drop(columns=corr_drop_cols) #de kolommen met een variantie boven de threshold worden verwijderd
     kept_features = df_reduced.columns
 
     if show_details:

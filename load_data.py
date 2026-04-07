@@ -30,25 +30,28 @@ def load_data(file_name):
     if not os.path.exists(data_path):
         raise FileNotFoundError(f"{file_name} not found in {this_directory}")
     
-    return pd.read_csv(data_path, index_col=0)
+    return pd.read_csv(data_path, index_col=0) #de eerste kolom (sample ID) wordt als index kolom gebruikt, nu is kolom 0 het label
 
 #%% Explore data to find missing values, duplicate rows and class-counts
 
 def explore_data(df):
     
     print("\nMissing Values (Top 10):")
-    missing = df.isnull().sum()
+    missing = df.isnull().sum() #per kolom bekijken of er missende waarden zijn 
     missing = missing[missing > 0].sort_values(ascending=False)
     print(missing.head(10) if not missing.empty else "No missing values found.")
     
-    print("\nDuplicate Rows:", df.duplicated().sum())
+    print("\nDuplicate Rows:", df.duplicated().sum()) # per rij bekijken of er dubbele rijen zijn (dezelfde sample)
 
-    labels = df.iloc[:, 0]
+    labels = df.iloc[:, 0] #tel de hoeveelheid GIST en non-GIST samples 
     counts = labels.value_counts()
     print(f"\nClass counts:\n{counts}\n")
 
     for i, col in enumerate(df.columns, 1):
-        print(f"{i:3d}. {col}")
+        print(f"{i:3d}. {col}") # print de titels van de kolommen (features)
+
+
+explore_data(load_data('GIST_radiomicFeatures.csv'))
 
 #%% Split the dataset into a train- and testset
 
@@ -74,18 +77,18 @@ def split_pd(df, show_details = True):
     """
     RANDOM_STATE = 42 #Random state to ensure the same split each time
 
-    X = df.drop(columns=["label"])
-    y = df["label"]
+    X = df.drop(columns=["label"]) # alle feature labels + waarden
+    y = df["label"] #de labels van de samples (GIST of non-GIST)
 
     X_train, X_test, y_train, y_test = train_test_split(
         X,
         y,
-        test_size=0.2,          
+        test_size=0.2, #20% van de data wordt gebruikt als testset, 80% als trainingset    
         random_state=RANDOM_STATE,
         shuffle=True,
-        stratify=y
+        stratify=y #verdeling van de klassen in test en trainset is gelijk aan de verdeling in de originele dataset
     )
-    y_train = y_train.map({'non-GIST': 0, 'GIST': 1})
+    y_train = y_train.map({'non-GIST': 0, 'GIST': 1}) #de labels worden omgezet naar 0 en 1, zodat ze gebruikt kunnen worden in de machine learning modellen (0 = non-GIST, 1 = GIST)
     y_test = y_test.map({'non-GIST': 0, 'GIST': 1})
 
     if show_details == True:
@@ -98,3 +101,5 @@ def split_pd(df, show_details = True):
         print("\nTest class distribution:")
         print(y_test.value_counts(normalize=True))
     return X_train, X_test, y_train, y_test
+
+#%%
