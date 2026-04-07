@@ -59,7 +59,7 @@ class LASSOFilter(BaseEstimator, TransformerMixin):
 
 #%% #%% Implementation of DeLong's test for comparing ROC-AUC
 
-def compute_midrank(x):
+def compute_midrank(x):                         # sort ranks
     J = np.argsort(x)
     Z = x[J]
     N = len(x)
@@ -67,7 +67,7 @@ def compute_midrank(x):
     i = 0
     while i < N:
         j = i
-        while j < N and Z[j] == Z[i]:
+        while j < N and Z[j] == Z[i]:           # handles ties
             j += 1
         T[i:j] = 0.5 * (i + j - 1)
         i = j
@@ -87,20 +87,20 @@ def fastDeLong(predictions_sorted_transposed, label_1_count):
         tx[r, :] = compute_midrank(positive_examples[r, :])
         ty[r, :] = compute_midrank(negative_examples[r, :])
         tz[r, :] = compute_midrank(predictions_sorted_transposed[r, :])
-    aucs = tz[:, :m].sum(axis=1) / m / n - float(m + 1.0) / 2.0 / n
-    v01 = (tz[:, :m] - tx[:, :]) / n
-    v10 = 1.0 - (tz[:, m:] - ty[:, :]) / m
-    sx = np.cov(v01)
-    sy = np.cov(v10)
+    aucs = tz[:, :m].sum(axis=1) / m / n - float(m + 1.0) / 2.0 / n     # Mann–Whitney U statistic
+    v01 = (tz[:, :m] - tx[:, :]) / n                                    # Contribution of each sample to AUC variability
+    v10 = 1.0 - (tz[:, m:] - ty[:, :]) / m                              # Contribution of each sample to AUC variability
+    sx = np.cov(v01)                                                    # Covariance matrix between models
+    sy = np.cov(v10)                                                    # Covariance matrix between models
     delongcov = sx / m + sy / n
     return aucs, delongcov
 
 def calc_pvalue(aucs, sigma):
     l = np.array([[1, -1]])
-    z = np.abs(np.diff(aucs)) / np.sqrt(np.dot(np.dot(l, sigma), l.T))
-    return 10 ** (np.log10(2) + scipy.stats.norm.logsf(z, loc=0, scale=1)[0, 0])
+    z = np.abs(np.diff(aucs)) / np.sqrt(np.dot(np.dot(l, sigma), l.T))                      # z-value formula
+    return 10 ** (np.log10(2) + scipy.stats.norm.logsf(z, loc=0, scale=1)[0, 0])            # Uses normal distribution for p-value
 
-def delong_roc_test(ground_truth, predictions_one, predictions_two):
+def delong_roc_test(ground_truth, predictions_one, predictions_two):                        # wrapper function
     order = np.lexsort((ground_truth,))
     ground_truth = ground_truth[order]
     predictions_one = predictions_one[order]
